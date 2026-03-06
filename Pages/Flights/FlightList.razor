@@ -1,0 +1,128 @@
+@page "/flights"
+
+@using FlightApp.Analysis
+@using FlightApp.Components
+@using FlightApp.Domain
+@using FlightApp.ViewModels
+@using FlightApp.Services
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject IJSRuntime JS
+@inject FlightService FlightService
+
+
+<h1>Flights</h1>
+
+<button @onclick="OpenImport">
+    Import IGC
+</button>
+<InputFile @ref="fileInput" OnChange="HandleFileSelected" style="display: none;" />
+
+@if (flights.Count == 0)
+{
+    <p>No flights available.</p>
+}
+else
+{
+    <table class="flight-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Duration</th>
+                <th>Glider</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var flight in flights)
+            {
+                <tr>
+                    <td>
+                        <NavLink href="@($"/flights/{flight.Id}")">
+                            @flight.Date
+                        </NavLink>
+                    </td>
+                    <td>@flight.Duration</td>
+                    <td>@flight.Glider</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+<FlightMap />
+
+@code {
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync(
+                "flightMap.createMap",
+                "map",
+                37.46,
+                30.04
+            );
+        }
+    }
+
+    private InputFile? fileInput;
+
+    private IgcParser parser = new();
+
+
+
+    private List<FlightListItemVm> flights = new();
+
+    protected override void OnInitialized()
+    {
+        flights = FlightService.GetFlights();
+    }
+
+    private async Task OpenImport()
+    {
+        if (fileInput is not null)
+        {
+            await JS.InvokeVoidAsync("openFilePicker", fileInput.Element);
+        }
+        Console.WriteLine("Import button clicked");
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        IBrowserFile? file = e.File;
+
+        Console.WriteLine($"Selected file: {file.Name}");
+        Console.WriteLine($"Size: {file.Size}");
+
+        using var stream = file.OpenReadStream();
+        using var reader = new StreamReader(stream);
+        string content = await reader.ReadToEndAsync();
+
+        var header = parser.ParseHeader(content);
+
+        List<FixPoint>? fixes = parser.ParseFixes(content);
+
+
+        await JS.InvokeVoidAsync(
+                "flightMap.drawTrack",
+                fixes.Select(f => new
+                {
+                    latitude = f.Latitude,
+                    longitude = f.Longitude
+                })
+        );
+
+        Console.WriteLine($"Fix count: {fixes.Count}");
+
+        if (fixes.Count > 0)
+        {
+            Console.WriteLine($"First fix: {fixes[0]}");
+        }
+
+        Console.WriteLine($"Date: {header.Date}");
+        Console.WriteLine($"Pilot: {header.Pilot}");
+        Console.WriteLine($"Glider: {header.Glider}");
+    }
+}

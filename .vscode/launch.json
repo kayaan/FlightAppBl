@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch and Debug Standalone Blazor WebAssembly App (Edge)",
+      "type": "blazorwasm",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "browser": "edge"
+    },
+    {
+      "name": "Attach to Blazor WebAssembly App (Edge)",
+      "type": "blazorwasm",
+      "request": "attach",
+      "cwd": "${workspaceFolder}",
+      "url": "https://localhost:5001",
+      "browser": "edge"
+    }
+  ]
+}
