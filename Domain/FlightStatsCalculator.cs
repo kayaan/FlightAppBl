@@ -11,14 +11,7 @@ public class FlightStatsCalculator
         if (fixes == null || fixes.Count == 0)
             return stats;
 
-        stats.FixCount = fixes.Count;
-
-        var first = fixes[0];
-        var last = fixes[^1];
-
-        stats.StartTimeUtc = first.TimeUtc;
-        stats.EndTimeUtc = last.TimeUtc;
-        stats.Duration = last.TimeUtc - first.TimeUtc;
+        InitializeBasicStats(stats, fixes);
 
         int? gpsMin = null;
         int? gpsMax = null;
@@ -37,30 +30,30 @@ public class FlightStatsCalculator
         double? maxVario = null;
         double? minVario = null;
 
-        FixPoint? previous = null;
         int varioWindowStartIndex = 0;
+        FixPoint? previous = null;
 
         for (int i = 0; i < fixes.Count; i++)
         {
             var fix = fixes[i];
 
-            UpdateAltitudeStats(
+            UpdateAltitudeMinMax(
                 fix,
                 ref gpsMin,
                 ref gpsMax,
                 ref baroMin,
                 ref baroMax);
 
-            UpdateSegmentStats(
-                fix,
+            UpdateSegmentDistanceSpeedAndClimbSink(
                 previous,
+                fix,
                 ref totalDistance,
                 ref totalTimeSeconds,
                 ref maxSpeed,
                 ref totalClimbMeters,
                 ref totalSinkMeters);
 
-            UpdateVarioStats(
+            UpdateWindowVario(
                 fixes,
                 i,
                 ref varioWindowStartIndex,
@@ -72,61 +65,41 @@ public class FlightStatsCalculator
             previous = fix;
         }
 
-        FinalizeStats(
-            stats,
-            fixes,
-            first,
-            last,
-            gpsMin,
-            gpsMax,
-            baroMin,
-            baroMax,
-            totalDistance,
-            totalTimeSeconds,
-            maxSpeed,
-            totalClimbMeters,
-            totalSinkMeters,
-            totalVario,
-            varioCount,
-            maxVario,
-            minVario);
+        ApplyAltitudeStats(stats, fixes[0], fixes[^1], gpsMin, gpsMax, baroMin, baroMax);
+        ApplyDistanceAndSpeedStats(stats, totalDistance, totalTimeSeconds, maxSpeed);
+        ApplyVarioStats(stats, totalVario, varioCount, maxVario, minVario);
+        ApplyClimbSinkStats(stats, totalClimbMeters, totalSinkMeters);
+        ApplyStartEndGainLossStats(stats, fixes[0], fixes[^1]);
+        ApplyMaxAboveStartEndStats(stats, fixes[0], fixes[^1], gpsMax, baroMax);
 
         return stats;
     }
 
-    private void UpdateAltitudeStats(
+    private static void InitializeBasicStats(FlightStats stats, List<FixPoint> fixes)
+    {
+        var first = fixes[0];
+        var last = fixes[^1];
+
+        stats.FixCount = fixes.Count;
+        stats.StartTimeUtc = first.TimeUtc;
+        stats.EndTimeUtc = last.TimeUtc;
+        stats.Duration = last.TimeUtc - first.TimeUtc;
+    }
+
+    private static void UpdateAltitudeMinMax(
         FixPoint fix,
         ref int? gpsMin,
         ref int? gpsMax,
         ref int? baroMin,
         ref int? baroMax)
     {
-        if (fix.AltitudeGps.HasValue)
-        {
-            var alt = fix.AltitudeGps.Value;
-
-            if (gpsMin == null || alt < gpsMin)
-                gpsMin = alt;
-
-            if (gpsMax == null || alt > gpsMax)
-                gpsMax = alt;
-        }
-
-        if (fix.AltitudeBaro.HasValue)
-        {
-            var alt = fix.AltitudeBaro.Value;
-
-            if (baroMin == null || alt < baroMin)
-                baroMin = alt;
-
-            if (baroMax == null || alt > baroMax)
-                baroMax = alt;
-        }
+        UpdateMinMax(fix.AltitudeGps, ref gpsMin, ref gpsMax);
+        UpdateMinMax(fix.AltitudeBaro, ref baroMin, ref baroMax);
     }
 
-    private void UpdateSegmentStats(
-        FixPoint fix,
+    private static void UpdateSegmentDistanceSpeedAndClimbSink(
         FixPoint? previous,
+        FixPoint current,
         ref double totalDistance,
         ref double totalTimeSeconds,
         ref double? maxSpeed,
@@ -136,27 +109,25 @@ public class FlightStatsCalculator
         if (previous == null)
             return;
 
+        var deltaTime = (current.TimeUtc - previous.TimeUtc).TotalSeconds;
+        if (deltaTime <= 0)
+            return;
+
         var distance = HaversineMeters(
             previous.Latitude,
             previous.Longitude,
-            fix.Latitude,
-            fix.Longitude);
-
-        var deltaTime = (fix.TimeUtc - previous.TimeUtc).TotalSeconds;
-
-        if (deltaTime <= 0)
-            return;
+            current.Latitude,
+            current.Longitude);
 
         totalDistance += distance;
         totalTimeSeconds += deltaTime;
 
         var speedKmh = (distance / deltaTime) * 3.6;
-
-        if (maxSpeed == null || speedKmh > maxSpeed)
+        if (maxSpeed == null || speedKmh > maxSpeed.Value)
             maxSpeed = speedKmh;
 
-        double? prevAlt = previous.AltitudeBaro ?? previous.AltitudeGps;
-        double? currAlt = fix.AltitudeBaro ?? fix.AltitudeGps;
+        var prevAlt = GetPreferredAltitude(previous);
+        var currAlt = GetPreferredAltitude(current);
 
         if (prevAlt.HasValue && currAlt.HasValue)
         {
@@ -169,87 +140,58 @@ public class FlightStatsCalculator
         }
     }
 
-    private void UpdateVarioStats(
+    private static void UpdateWindowVario(
         List<FixPoint> fixes,
-        int i,
-        ref int windowIndex,
+        int currentIndex,
+        ref int windowStartIndex,
         ref double totalVario,
         ref int varioCount,
         ref double? maxVario,
         ref double? minVario)
     {
-        var fix = fixes[i];
+        var current = fixes[currentIndex];
 
-        while (windowIndex < i &&
-               (fix.TimeUtc - fixes[windowIndex].TimeUtc).TotalSeconds >
-               FlightConstants.DefaultVarioWindowSeconds)
+        while (windowStartIndex < currentIndex &&
+               (current.TimeUtc - fixes[windowStartIndex].TimeUtc).TotalSeconds > FlightConstants.DefaultVarioWindowSeconds)
         {
-            windowIndex++;
+            windowStartIndex++;
         }
 
-        if (windowIndex >= i)
+        if (windowStartIndex >= currentIndex)
             return;
 
-        var baseFix = fixes[windowIndex];
-
-        var deltaTime = (fix.TimeUtc - baseFix.TimeUtc).TotalSeconds;
-
+        var baseFix = fixes[windowStartIndex];
+        var deltaTime = (current.TimeUtc - baseFix.TimeUtc).TotalSeconds;
         if (deltaTime <= 0)
             return;
 
-        double? baseAlt = baseFix.AltitudeBaro ?? baseFix.AltitudeGps;
-        double? currentAlt = fix.AltitudeBaro ?? fix.AltitudeGps;
+        var baseAlt = GetPreferredAltitude(baseFix);
+        var currentAlt = GetPreferredAltitude(current);
 
         if (!baseAlt.HasValue || !currentAlt.HasValue)
             return;
 
-        var vario = (currentAlt.Value - baseAlt.Value) / deltaTime;
+        var varioMs = (currentAlt.Value - baseAlt.Value) / deltaTime;
 
-        totalVario += vario;
+        totalVario += varioMs;
         varioCount++;
 
-        if (maxVario == null || vario > maxVario)
-            maxVario = vario;
+        if (maxVario == null || varioMs > maxVario.Value)
+            maxVario = varioMs;
 
-        if (minVario == null || vario < minVario)
-            minVario = vario;
+        if (minVario == null || varioMs < minVario.Value)
+            minVario = varioMs;
     }
 
-    private void FinalizeStats(
+    private static void ApplyAltitudeStats(
         FlightStats stats,
-        List<FixPoint> fixes,
         FixPoint first,
         FixPoint last,
         int? gpsMin,
         int? gpsMax,
         int? baroMin,
-        int? baroMax,
-        double totalDistance,
-        double totalTimeSeconds,
-        double? maxSpeed,
-        double totalClimbMeters,
-        double totalSinkMeters,
-        double totalVario,
-        int varioCount,
-        double? maxVario,
-        double? minVario)
+        int? baroMax)
     {
-        stats.TotalDistanceMeters = totalDistance;
-
-        if (totalTimeSeconds > 0)
-            stats.AvgGroundSpeedKmh = (totalDistance / totalTimeSeconds) * 3.6;
-
-        stats.MaxGroundSpeedKmh = maxSpeed;
-
-        if (varioCount > 0)
-            stats.AvgVarioMs = totalVario / varioCount;
-
-        stats.MaxVarioMs = maxVario;
-        stats.MinVarioMs = minVario;
-
-        stats.TotalClimbMeters = totalClimbMeters;
-        stats.TotalSinkMeters = totalSinkMeters;
-
         stats.AltGpsStart = first.AltitudeGps;
         stats.AltGpsEnd = last.AltitudeGps;
         stats.AltGpsMin = gpsMin;
@@ -259,6 +201,111 @@ public class FlightStatsCalculator
         stats.AltBaroEnd = last.AltitudeBaro;
         stats.AltBaroMin = baroMin;
         stats.AltBaroMax = baroMax;
+    }
+
+    private static void ApplyDistanceAndSpeedStats(
+        FlightStats stats,
+        double totalDistance,
+        double totalTimeSeconds,
+        double? maxSpeed)
+    {
+        stats.TotalDistanceMeters = totalDistance;
+        stats.MaxGroundSpeedKmh = maxSpeed;
+
+        if (totalTimeSeconds > 0)
+            stats.AvgGroundSpeedKmh = (totalDistance / totalTimeSeconds) * 3.6;
+    }
+
+    private static void ApplyVarioStats(
+        FlightStats stats,
+        double totalVario,
+        int varioCount,
+        double? maxVario,
+        double? minVario)
+    {
+        if (varioCount > 0)
+            stats.AvgVarioMs = totalVario / varioCount;
+
+        stats.MaxVarioMs = maxVario;
+        stats.MinVarioMs = minVario;
+    }
+
+    private static void ApplyClimbSinkStats(
+        FlightStats stats,
+        double totalClimbMeters,
+        double totalSinkMeters)
+    {
+        stats.TotalClimbMeters = totalClimbMeters;
+        stats.TotalSinkMeters = totalSinkMeters;
+    }
+
+    private static void ApplyStartEndGainLossStats(
+        FlightStats stats,
+        FixPoint first,
+        FixPoint last)
+    {
+        ApplyGainLoss(first.AltitudeGps, last.AltitudeGps, out var gpsGain, out var gpsLoss);
+        ApplyGainLoss(first.AltitudeBaro, last.AltitudeBaro, out var baroGain, out var baroLoss);
+
+        stats.AltGpsGainMeters = gpsGain;
+        stats.AltGpsLossMeters = gpsLoss;
+        stats.AltBaroGainMeters = baroGain;
+        stats.AltBaroLossMeters = baroLoss;
+    }
+
+    private static void ApplyMaxAboveStartEndStats(
+        FlightStats stats,
+        FixPoint first,
+        FixPoint last,
+        int? gpsMax,
+        int? baroMax)
+    {
+        stats.MaxHeightAboveLaunchGps = CalculateDifference(gpsMax, first.AltitudeGps);
+        stats.MaxHeightAboveLaunchBaro = CalculateDifference(baroMax, first.AltitudeBaro);
+
+        stats.MaxHeightAboveLandingGps = CalculateDifference(gpsMax, last.AltitudeGps);
+        stats.MaxHeightAboveLandingBaro = CalculateDifference(baroMax, last.AltitudeBaro);
+    }
+
+    private static void UpdateMinMax(int? value, ref int? min, ref int? max)
+    {
+        if (!value.HasValue)
+            return;
+
+        if (min == null || value.Value < min.Value)
+            min = value.Value;
+
+        if (max == null || value.Value > max.Value)
+            max = value.Value;
+    }
+
+    private static double? GetPreferredAltitude(FixPoint fix)
+    {
+        return fix.AltitudeBaro ?? fix.AltitudeGps;
+    }
+
+    private static void ApplyGainLoss(int? start, int? end, out int? gain, out int? loss)
+    {
+        gain = null;
+        loss = null;
+
+        if (!start.HasValue || !end.HasValue)
+            return;
+
+        var diff = end.Value - start.Value;
+
+        if (diff > 0)
+            gain = diff;
+        else if (diff < 0)
+            loss = -diff;
+    }
+
+    private static int? CalculateDifference(int? maxAlt, int? referenceAlt)
+    {
+        if (!maxAlt.HasValue || !referenceAlt.HasValue)
+            return null;
+
+        return maxAlt.Value - referenceAlt.Value;
     }
 
     private static double HaversineMeters(
