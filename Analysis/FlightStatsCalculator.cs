@@ -1,6 +1,6 @@
-using FlightApp.Domain;
-
 namespace FlightApp.Analysis;
+
+using FlightApp.Domain;
 
 public class FlightStatsCalculator
 {
