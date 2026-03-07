@@ -50,9 +50,69 @@ else
 }
 
 
+@if (stats != null)
+{
+    <div style="margin-top:20px; border:1px solid gray; padding:10px">
+
+        <h3>Flight Stats</h3>
+
+        <b>FixCount:</b> @stats.FixCount <br />
+
+        <b>Start:</b> @stats.StartTimeUtc <br />
+        <b>End:</b> @stats.EndTimeUtc <br />
+        <b>Duration:</b> @stats.Duration <br />
+
+        <b>Distance:</b> @(stats.TotalDistanceMeters / 1000.0) km <br />
+
+        <b>Avg Speed:</b> @stats.AvgGroundSpeedKmh km/h <br />
+        <b>Max Speed:</b> @stats.MaxGroundSpeedKmh km/h <br />
+
+        <b>Avg Vario:</b> @stats.AvgVarioMs m/s <br />
+        <b>Max Vario:</b> @stats.MaxVarioMs m/s <br />
+        <b>Min Vario:</b> @stats.MinVarioMs m/s <br />
+
+        <b>Total Climb:</b> @stats.TotalClimbMeters m <br />
+        <b>Total Sink:</b> @stats.TotalSinkMeters m <br />
+
+        <hr />
+
+        <b>GPS Start:</b> @stats.AltGpsStart <br />
+        <b>GPS End:</b> @stats.AltGpsEnd <br />
+        <b>GPS Min:</b> @stats.AltGpsMin <br />
+        <b>GPS Max:</b> @stats.AltGpsMax <br />
+
+        <hr />
+
+        <b>Baro Start:</b> @stats.AltBaroStart <br />
+        <b>Baro End:</b> @stats.AltBaroEnd <br />
+        <b>Baro Min:</b> @stats.AltBaroMin <br />
+        <b>Baro Max:</b> @stats.AltBaroMax <br />
+
+        <hr/>
+
+        <b>GPS Gain:</b> @stats.AltGpsGainMeters m <br />
+        <b>GPS Loss:</b> @stats.AltGpsLossMeters m <br />
+
+        <b>Baro Gain:</b> @stats.AltBaroGainMeters m <br />
+        <b>Baro Loss:</b> @stats.AltBaroLossMeters m <br />
+
+
+        <hr />
+
+        <b>Max Height Above Launch (GPS):</b> @stats.MaxHeightAboveLaunchGps m <br />
+        <b>Max Height Above Launch (Baro):</b> @stats.MaxHeightAboveLaunchBaro m <br />
+
+        <b>Max Height Above Landing (GPS):</b> @stats.MaxHeightAboveLandingGps m <br />
+        <b>Max Height Above Landing (Baro):</b> @stats.MaxHeightAboveLandingBaro m <br />
+
+    </div>
+}
+
 <FlightMap />
 
 @code {
+
+    FlightStats? stats;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -103,6 +163,14 @@ else
         var header = parser.ParseHeader(content);
 
         List<FixPoint>? fixes = parser.ParseFixes(content);
+
+        FlightStatsCalculator calculator = new();
+
+        stats = calculator.Calculate(fixes);
+
+
+
+
 
 
         await JS.InvokeVoidAsync(

@@ -28,4 +28,20 @@ public class FlightStats
     public double? AvgVarioMs { get; set; }
     public double? MaxVarioMs { get; set; }
     public double? MinVarioMs { get; set; }
+
+    public double TotalClimbMeters { get; set; }
+    public double TotalSinkMeters { get; set; }
+
+
+    public int? AltGpsGainMeters { get; set; }
+    public int? AltGpsLossMeters { get; set; }
+
+    public int? AltBaroGainMeters { get; set; }
+    public int? AltBaroLossMeters { get; set; }
+
+    public int? MaxHeightAboveLaunchGps { get; set; }
+    public int? MaxHeightAboveLaunchBaro { get; set; }
+
+    public int? MaxHeightAboveLandingGps { get; set; }
+    public int? MaxHeightAboveLandingBaro { get; set; }
 }

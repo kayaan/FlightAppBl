@@ -22,7 +22,6 @@ public class FlightStatsCalculator
 
         int? gpsMin = null;
         int? gpsMax = null;
-
         int? baroMin = null;
         int? baroMax = null;
 
@@ -30,67 +29,226 @@ public class FlightStatsCalculator
         double totalTimeSeconds = 0;
         double? maxSpeed = null;
 
+        double totalClimbMeters = 0;
+        double totalSinkMeters = 0;
+
+        double totalVario = 0;
+        int varioCount = 0;
+        double? maxVario = null;
+        double? minVario = null;
+
         FixPoint? previous = null;
+        int varioWindowStartIndex = 0;
 
-        foreach (var fix in fixes)
+        for (int i = 0; i < fixes.Count; i++)
         {
-            if (fix.AltitudeGps.HasValue)
-            {
-                var alt = fix.AltitudeGps.Value;
+            var fix = fixes[i];
 
-                if (gpsMin == null || alt < gpsMin)
-                    gpsMin = alt;
+            UpdateAltitudeStats(
+                fix,
+                ref gpsMin,
+                ref gpsMax,
+                ref baroMin,
+                ref baroMax);
 
-                if (gpsMax == null || alt > gpsMax)
-                    gpsMax = alt;
-            }
+            UpdateSegmentStats(
+                fix,
+                previous,
+                ref totalDistance,
+                ref totalTimeSeconds,
+                ref maxSpeed,
+                ref totalClimbMeters,
+                ref totalSinkMeters);
 
-            if (fix.AltitudeBaro.HasValue)
-            {
-                var alt = fix.AltitudeBaro.Value;
-
-                if (baroMin == null || alt < baroMin)
-                    baroMin = alt;
-
-                if (baroMax == null || alt > baroMax)
-                    baroMax = alt;
-            }
-
-            if (previous != null)
-            {
-                var distance = HaversineMeters(
-                    previous.Latitude,
-                    previous.Longitude,
-                    fix.Latitude,
-                    fix.Longitude
-                );
-
-                var deltaTime = (fix.TimeUtc - previous.TimeUtc).TotalSeconds;
-
-                if (deltaTime > 0)
-                {
-                    totalDistance += distance;
-                    totalTimeSeconds += deltaTime;
-
-                    var speedMs = distance / deltaTime;
-                    var speedKmh = speedMs * 3.6;
-
-                    if (maxSpeed == null || speedKmh > maxSpeed)
-                        maxSpeed = speedKmh;
-                }
-            }
+            UpdateVarioStats(
+                fixes,
+                i,
+                ref varioWindowStartIndex,
+                ref totalVario,
+                ref varioCount,
+                ref maxVario,
+                ref minVario);
 
             previous = fix;
         }
 
+        FinalizeStats(
+            stats,
+            fixes,
+            first,
+            last,
+            gpsMin,
+            gpsMax,
+            baroMin,
+            baroMax,
+            totalDistance,
+            totalTimeSeconds,
+            maxSpeed,
+            totalClimbMeters,
+            totalSinkMeters,
+            totalVario,
+            varioCount,
+            maxVario,
+            minVario);
+
+        return stats;
+    }
+
+    private void UpdateAltitudeStats(
+        FixPoint fix,
+        ref int? gpsMin,
+        ref int? gpsMax,
+        ref int? baroMin,
+        ref int? baroMax)
+    {
+        if (fix.AltitudeGps.HasValue)
+        {
+            var alt = fix.AltitudeGps.Value;
+
+            if (gpsMin == null || alt < gpsMin)
+                gpsMin = alt;
+
+            if (gpsMax == null || alt > gpsMax)
+                gpsMax = alt;
+        }
+
+        if (fix.AltitudeBaro.HasValue)
+        {
+            var alt = fix.AltitudeBaro.Value;
+
+            if (baroMin == null || alt < baroMin)
+                baroMin = alt;
+
+            if (baroMax == null || alt > baroMax)
+                baroMax = alt;
+        }
+    }
+
+    private void UpdateSegmentStats(
+        FixPoint fix,
+        FixPoint? previous,
+        ref double totalDistance,
+        ref double totalTimeSeconds,
+        ref double? maxSpeed,
+        ref double totalClimbMeters,
+        ref double totalSinkMeters)
+    {
+        if (previous == null)
+            return;
+
+        var distance = HaversineMeters(
+            previous.Latitude,
+            previous.Longitude,
+            fix.Latitude,
+            fix.Longitude);
+
+        var deltaTime = (fix.TimeUtc - previous.TimeUtc).TotalSeconds;
+
+        if (deltaTime <= 0)
+            return;
+
+        totalDistance += distance;
+        totalTimeSeconds += deltaTime;
+
+        var speedKmh = (distance / deltaTime) * 3.6;
+
+        if (maxSpeed == null || speedKmh > maxSpeed)
+            maxSpeed = speedKmh;
+
+        double? prevAlt = previous.AltitudeBaro ?? previous.AltitudeGps;
+        double? currAlt = fix.AltitudeBaro ?? fix.AltitudeGps;
+
+        if (prevAlt.HasValue && currAlt.HasValue)
+        {
+            var deltaAlt = currAlt.Value - prevAlt.Value;
+
+            if (deltaAlt > 0)
+                totalClimbMeters += deltaAlt;
+            else if (deltaAlt < 0)
+                totalSinkMeters += -deltaAlt;
+        }
+    }
+
+    private void UpdateVarioStats(
+        List<FixPoint> fixes,
+        int i,
+        ref int windowIndex,
+        ref double totalVario,
+        ref int varioCount,
+        ref double? maxVario,
+        ref double? minVario)
+    {
+        var fix = fixes[i];
+
+        while (windowIndex < i &&
+               (fix.TimeUtc - fixes[windowIndex].TimeUtc).TotalSeconds >
+               FlightConstants.DefaultVarioWindowSeconds)
+        {
+            windowIndex++;
+        }
+
+        if (windowIndex >= i)
+            return;
+
+        var baseFix = fixes[windowIndex];
+
+        var deltaTime = (fix.TimeUtc - baseFix.TimeUtc).TotalSeconds;
+
+        if (deltaTime <= 0)
+            return;
+
+        double? baseAlt = baseFix.AltitudeBaro ?? baseFix.AltitudeGps;
+        double? currentAlt = fix.AltitudeBaro ?? fix.AltitudeGps;
+
+        if (!baseAlt.HasValue || !currentAlt.HasValue)
+            return;
+
+        var vario = (currentAlt.Value - baseAlt.Value) / deltaTime;
+
+        totalVario += vario;
+        varioCount++;
+
+        if (maxVario == null || vario > maxVario)
+            maxVario = vario;
+
+        if (minVario == null || vario < minVario)
+            minVario = vario;
+    }
+
+    private void FinalizeStats(
+        FlightStats stats,
+        List<FixPoint> fixes,
+        FixPoint first,
+        FixPoint last,
+        int? gpsMin,
+        int? gpsMax,
+        int? baroMin,
+        int? baroMax,
+        double totalDistance,
+        double totalTimeSeconds,
+        double? maxSpeed,
+        double totalClimbMeters,
+        double totalSinkMeters,
+        double totalVario,
+        int varioCount,
+        double? maxVario,
+        double? minVario)
+    {
         stats.TotalDistanceMeters = totalDistance;
 
         if (totalTimeSeconds > 0)
-        {
             stats.AvgGroundSpeedKmh = (totalDistance / totalTimeSeconds) * 3.6;
-        }
 
         stats.MaxGroundSpeedKmh = maxSpeed;
+
+        if (varioCount > 0)
+            stats.AvgVarioMs = totalVario / varioCount;
+
+        stats.MaxVarioMs = maxVario;
+        stats.MinVarioMs = minVario;
+
+        stats.TotalClimbMeters = totalClimbMeters;
+        stats.TotalSinkMeters = totalSinkMeters;
 
         stats.AltGpsStart = first.AltitudeGps;
         stats.AltGpsEnd = last.AltitudeGps;
@@ -101,8 +259,6 @@ public class FlightStatsCalculator
         stats.AltBaroEnd = last.AltitudeBaro;
         stats.AltBaroMin = baroMin;
         stats.AltBaroMax = baroMax;
-
-        return stats;
     }
 
     private static double HaversineMeters(
@@ -111,8 +267,6 @@ public class FlightStatsCalculator
         double lat2,
         double lon2)
     {
-        const double R = 6371000;
-
         var dLat = DegreesToRadians(lat2 - lat1);
         var dLon = DegreesToRadians(lon2 - lon1);
 
@@ -126,7 +280,7 @@ public class FlightStatsCalculator
 
         var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
 
-        return R * c;
+        return FlightConstants.EarthRadiusMeters * c;
     }
 
     private static double DegreesToRadians(double deg)
