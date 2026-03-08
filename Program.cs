@@ -2,12 +2,19 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using FlightApp;
 using FlightApp.Services;
+using FlightApp.Analysis;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddScoped<TrackBinarySerializer>();
+builder.Services.AddScoped<IFlightStorage, InMemoryFlightStorage>();
+builder.Services.AddScoped<FlightImportService>();
+builder.Services.AddScoped<IgcParser>();
+builder.Services.AddScoped<FlightStatsCalculator>();
 builder.Services.AddScoped<FlightService>();
 
 await builder.Build().RunAsync();

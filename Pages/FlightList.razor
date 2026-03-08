@@ -1,14 +1,13 @@
 @page "/"
 @page "/flights"
 
-@using FlightApp.Analysis
 @using FlightApp.Components
 @using FlightApp.Domain
-@using FlightApp.ViewModels
 @using FlightApp.Services
 @using Microsoft.AspNetCore.Components.Forms
 
 @inject IJSRuntime JS
+
 @inject FlightService FlightService
 
 
@@ -17,129 +16,68 @@
 <button @onclick="OpenImport">
     Import IGC
 </button>
-<InputFile
-    @ref="fileInput" 
-    OnChange="HandleFileSelected" 
-    style="display: none;"
-    accept=".igc"
-    multiple
-    
-     />
+<InputFile @ref="fileInput" OnChange="HandleFileSelected" style="display: none;" accept=".igc" multiple />
 
-@if (indices.Length > 0)
+@if (flights.Count == 0)
 {
-    <h3>Altitude (ECharts)</h3>
-    <div id="altitudeChart" style="width:100%; height:320px;"></div>
+    <p>No flights imported.</p>
+}
+else
+{
+    <table style="margin-top:20px; width:100%; border-collapse:collapse">
+
+        <thead>
+            <tr style="border-bottom:2px solid #ccc">
+                <th>Date</th>
+                <th>Pilot</th>
+                <th>Glider</th>
+                <th>Fixes</th>
+                <th>Duration</th>
+                <th>Distance km</th>
+                <th>Max Alt</th>
+                <th>Max Speed</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var f in flights)
+            {
+                <tr style="border-bottom:1px solid #eee">
+
+                    <td>@f.Date</td>
+
+                    <td>@f.PilotId</td>
+
+                    <td>@f.GliderId</td>
+
+                    <td>@f.Stats.FixCount</td>
+
+                    <td>@f.Stats.Duration</td>
+
+                    <td>@((f.Stats.TotalDistanceMeters / 1000.0).ToString("F1"))</td>
+
+                    <td>@f.Stats.AltGpsMax</td>
+
+                    <td>@f.Stats.MaxGroundSpeedKmh?.ToString("F1")</td>
+
+                </tr>
+            }
+        </tbody>
+
+    </table>
 }
 
-
-@if (stats != null)
-{
-    <div style="margin-top:20px; border:1px solid gray; padding:10px">
-
-        <h3>Flight Stats</h3>
-
-        <b>FixCount:</b> @stats.FixCount <br />
-
-        <b>Start:</b> @stats.StartTimeUtc <br />
-        <b>End:</b> @stats.EndTimeUtc <br />
-        <b>Duration:</b> @stats.Duration <br />
-
-        <b>Distance:</b> @(stats.TotalDistanceMeters / 1000.0) km <br />
-
-        <b>Avg Speed:</b> @stats.AvgGroundSpeedKmh km/h <br />
-        <b>Max Speed:</b> @stats.MaxGroundSpeedKmh km/h <br />
-
-        <b>Avg Vario:</b> @stats.AvgVarioMs m/s <br />
-        <b>Max Vario:</b> @stats.MaxVarioMs m/s <br />
-        <b>Min Vario:</b> @stats.MinVarioMs m/s <br />
-
-        <b>Total Climb:</b> @stats.TotalClimbMeters m <br />
-        <b>Total Sink:</b> @stats.TotalSinkMeters m <br />
-
-        <hr />
-
-        <b>GPS Start:</b> @stats.AltGpsStart <br />
-        <b>GPS End:</b> @stats.AltGpsEnd <br />
-        <b>GPS Min:</b> @stats.AltGpsMin <br />
-        <b>GPS Max:</b> @stats.AltGpsMax <br />
-
-        <hr />
-
-        <b>Baro Start:</b> @stats.AltBaroStart <br />
-        <b>Baro End:</b> @stats.AltBaroEnd <br />
-        <b>Baro Min:</b> @stats.AltBaroMin <br />
-        <b>Baro Max:</b> @stats.AltBaroMax <br />
-
-        <hr />
-
-        <b>GPS Gain:</b> @stats.AltGpsGainMeters m <br />
-        <b>GPS Loss:</b> @stats.AltGpsLossMeters m <br />
-
-        <b>Baro Gain:</b> @stats.AltBaroGainMeters m <br />
-        <b>Baro Loss:</b> @stats.AltBaroLossMeters m <br />
-
-
-        <hr />
-
-        <b>Max Height Above Launch (GPS):</b> @stats.MaxHeightAboveLaunchGps m <br />
-        <b>Max Height Above Launch (Baro):</b> @stats.MaxHeightAboveLaunchBaro m <br />
-
-        <b>Max Height Above Landing (GPS):</b> @stats.MaxHeightAboveLandingGps m <br />
-        <b>Max Height Above Landing (Baro):</b> @stats.MaxHeightAboveLandingBaro m <br />
-
-    </div>
-}
-
-<FlightMap />
 
 @code {
 
-    private int[] indices = Array.Empty<int>();
-    private double[] altBaro = Array.Empty<double>();
-    private double[] altGps = Array.Empty<double>();
-    private bool altitudeChartDirty = false;
-
-    FlightStats? stats;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        @* if (firstRender)
-        {
-            await JS.InvokeVoidAsync(
-                "flightMap.createMap",
-                "map",
-                37.46,
-                30.04
-            );
-        } *@
-
-        if (altitudeChartDirty && indices.Length > 0)
-        {
-            altitudeChartDirty = false;
-
-            await JS.InvokeVoidAsync(
-                "flightCharts.renderAltitudeChart",
-                "altitudeChart",
-                indices,
-                altBaro,
-                altGps
-            );
-        }
-    }
-
     private InputFile? fileInput;
+    private List<Flight> flights = new();
 
-    private IgcParser parser = new();
-
-
-
-    private List<FlightListItemVm> flights = new();
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        flights = FlightService.GetFlights();
+        flights = await FlightService.GetFlightsAsync();
     }
+
 
     private async Task OpenImport()
     {
@@ -147,62 +85,23 @@
         {
             await JS.InvokeVoidAsync("openFilePicker", fileInput.Element);
         }
-        Console.WriteLine("Import button clicked");
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
-        IBrowserFile? file = e.File;
+        var files = e.GetMultipleFiles();
+        var contents = new List<string>();
 
-        Console.WriteLine($"Selected file: {file.Name}");
-        Console.WriteLine($"Size: {file.Size}");
-
-        using var stream = file.OpenReadStream();
-        using var reader = new StreamReader(stream);
-        string content = await reader.ReadToEndAsync();
-
-        var header = parser.ParseHeader(content);
-
-        List<FixPoint>? fixes = parser.ParseFixes(content);
-
-        @* FlightStatsCalculator calculator = new(); *@
-
-        @* stats = calculator.Calculate(fixes); *@
-
-
-        indices = Enumerable.Range(0, fixes.Count).ToArray();
-
-        altBaro = fixes
-            .Select(f => f.AltitudeBaro.HasValue ? f.AltitudeBaro.Value * 1.0 : double.NaN)
-            .ToArray();
-
-        altGps = fixes
-            .Select(f => f.AltitudeGps.HasValue ? f.AltitudeGps.Value * 1.0 : double.NaN)
-            .ToArray();
-
-        altitudeChartDirty = true;
-
-
-
-
-        @* await JS.InvokeVoidAsync(
-                "flightMap.drawTrack",
-                fixes.Select(f => new
-                {
-                    latitude = f.Latitude,
-                    longitude = f.Longitude
-                })
-        ); *@
-
-        Console.WriteLine($"Fix count: {fixes.Count}");
-
-        if (fixes.Count > 0)
+        foreach (var file in files)
         {
-            Console.WriteLine($"First fix: {fixes[0]}");
+            using var stream = file.OpenReadStream();
+            using var reader = new StreamReader(stream);
+
+            contents.Add(await reader.ReadToEndAsync());
         }
 
-        Console.WriteLine($"Date: {header.Date}");
-        Console.WriteLine($"Pilot: {header.Pilot}");
-        Console.WriteLine($"Glider: {header.Glider}");
+        await FlightService.ImportFilesAsync(contents);
+
+        flights = await FlightService.GetFlightsAsync();
     }
 }
