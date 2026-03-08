@@ -17,37 +17,19 @@
 <button @onclick="OpenImport">
     Import IGC
 </button>
-<InputFile @ref="fileInput" OnChange="HandleFileSelected" style="display: none;" />
+<InputFile
+    @ref="fileInput" 
+    OnChange="HandleFileSelected" 
+    style="display: none;"
+    accept=".igc"
+    multiple
+    
+     />
 
-@if (flights.Count == 0)
+@if (indices.Length > 0)
 {
-    <p>No flights available.</p>
-}
-else
-{
-    <table class="flight-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Duration</th>
-                <th>Glider</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var flight in flights)
-            {
-                <tr>
-                    <td>
-                        <NavLink href="@($"/flights/{flight.Id}")">
-                            @flight.Date
-                        </NavLink>
-                    </td>
-                    <td>@flight.Duration</td>
-                    <td>@flight.Glider</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <h3>Altitude (ECharts)</h3>
+    <div id="altitudeChart" style="width:100%; height:320px;"></div>
 }
 
 
@@ -89,7 +71,7 @@ else
         <b>Baro Min:</b> @stats.AltBaroMin <br />
         <b>Baro Max:</b> @stats.AltBaroMax <br />
 
-        <hr/>
+        <hr />
 
         <b>GPS Gain:</b> @stats.AltGpsGainMeters m <br />
         <b>GPS Loss:</b> @stats.AltGpsLossMeters m <br />
@@ -113,17 +95,35 @@ else
 
 @code {
 
+    private int[] indices = Array.Empty<int>();
+    private double[] altBaro = Array.Empty<double>();
+    private double[] altGps = Array.Empty<double>();
+    private bool altitudeChartDirty = false;
+
     FlightStats? stats;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        @* if (firstRender)
         {
             await JS.InvokeVoidAsync(
                 "flightMap.createMap",
                 "map",
                 37.46,
                 30.04
+            );
+        } *@
+
+        if (altitudeChartDirty && indices.Length > 0)
+        {
+            altitudeChartDirty = false;
+
+            await JS.InvokeVoidAsync(
+                "flightCharts.renderAltitudeChart",
+                "altitudeChart",
+                indices,
+                altBaro,
+                altGps
             );
         }
     }
@@ -165,23 +165,34 @@ else
 
         List<FixPoint>? fixes = parser.ParseFixes(content);
 
-        FlightStatsCalculator calculator = new();
+        @* FlightStatsCalculator calculator = new(); *@
 
-        stats = calculator.Calculate(fixes);
-
-
+        @* stats = calculator.Calculate(fixes); *@
 
 
+        indices = Enumerable.Range(0, fixes.Count).ToArray();
+
+        altBaro = fixes
+            .Select(f => f.AltitudeBaro.HasValue ? f.AltitudeBaro.Value * 1.0 : double.NaN)
+            .ToArray();
+
+        altGps = fixes
+            .Select(f => f.AltitudeGps.HasValue ? f.AltitudeGps.Value * 1.0 : double.NaN)
+            .ToArray();
+
+        altitudeChartDirty = true;
 
 
-        await JS.InvokeVoidAsync(
+
+
+        @* await JS.InvokeVoidAsync(
                 "flightMap.drawTrack",
                 fixes.Select(f => new
                 {
                     latitude = f.Latitude,
                     longitude = f.Longitude
                 })
-        );
+        ); *@
 
         Console.WriteLine($"Fix count: {fixes.Count}");
 
