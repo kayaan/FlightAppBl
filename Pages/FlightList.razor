@@ -25,7 +25,6 @@
 else
 {
     <table style="margin-top:20px; width:100%; border-collapse:collapse">
-
         <thead>
             <tr style="border-bottom:2px solid #ccc">
                 <th>Date</th>
@@ -34,39 +33,37 @@ else
                 <th>Fixes</th>
                 <th>Duration</th>
                 <th>Distance km</th>
-                <th>Max Alt</th>
+                <th>Max Alt GPS</th>
+                <th>Max Alt Baro</th>
+                <th>Avg Speed</th>
                 <th>Max Speed</th>
+                <th>Avg Vario</th>
+                <th>Climb</th>
+                <th>Sink</th>
             </tr>
         </thead>
-
         <tbody>
             @foreach (var f in flights)
             {
                 <tr style="border-bottom:1px solid #eee">
-
                     <td>@f.Date</td>
-
                     <td>@f.PilotId</td>
-
                     <td>@f.GliderId</td>
-
                     <td>@f.Stats.FixCount</td>
-
                     <td>@f.Stats.Duration</td>
-
-                    <td>@((f.Stats.TotalDistanceMeters / 1000.0).ToString("F1"))</td>
-
+                    <td>@(Math.Round(f.Stats.TotalDistanceMeters / 1000.0, 1))</td>
                     <td>@f.Stats.AltGpsMax</td>
-
-                    <td>@f.Stats.MaxGroundSpeedKmh?.ToString("F1")</td>
-
+                    <td>@f.Stats.AltBaroMax</td>
+                    <td>@(f.Stats.AvgGroundSpeedKmh?.ToString("F1"))</td>
+                    <td>@(f.Stats.MaxGroundSpeedKmh?.ToString("F1"))</td>
+                    <td>@(f.Stats.AvgVarioMs?.ToString("F2"))</td>
+                    <td>@Math.Round(f.Stats.TotalClimbMeters, 0)</td>
+                    <td>@Math.Round(f.Stats.TotalSinkMeters, 0)</td>
                 </tr>
             }
         </tbody>
-
     </table>
 }
-
 
 @code {
 

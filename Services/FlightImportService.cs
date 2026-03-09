@@ -26,10 +26,11 @@ public class FlightImportService
     {
         var result = ImportInternal(igcContent);
 
-        await _flightStorage.SaveFlightAsync(result.Flight);
-
         var trackBinary = _trackBinarySerializer.Serialize(result.Track);
+
+        await _flightStorage.SaveFlightAsync(result.Flight);
         await _flightStorage.SaveTrackAsync(result.Flight.Id, trackBinary);
+        await _flightStorage.SaveIgcAsync(result.Flight.Id, igcContent);
 
         return result.Flight;
     }
@@ -44,7 +45,7 @@ public class FlightImportService
 
         var flight = new Flight
         {
-            Date = header.Date,
+            Date = header!.Date!.ToString(),
             PilotId = header.Pilot,
             GliderId = header.Glider,
             Stats = stats

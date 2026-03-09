@@ -11,7 +11,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped<TrackBinarySerializer>();
-builder.Services.AddScoped<IFlightStorage, InMemoryFlightStorage>();
+builder.Services.AddScoped<IFlightStorage, IndexedDbFlightStorage>();
 builder.Services.AddScoped<FlightImportService>();
 builder.Services.AddScoped<IgcParser>();
 builder.Services.AddScoped<FlightStatsCalculator>();

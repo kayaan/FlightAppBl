@@ -50,4 +50,15 @@ public class InMemoryFlightStorage : IFlightStorage
         _tracks.TryGetValue(flightId, out var track);
         return Task.FromResult(track);
     }
+
+    public Task SaveIgcAsync(string flightId, string igcContent)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<string?> GetIgcAsync(string flightId)
+    {
+        throw new NotImplementedException();
+    }
+
 }

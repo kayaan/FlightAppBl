@@ -6,7 +6,7 @@ public class Flight
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
-    public DateOnly? Date { get; set; }
+    public string? Date { get; set; }
 
     public string? PilotId { get; set; }
 
