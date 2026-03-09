@@ -49,13 +49,34 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         }
     }
 
-    function render(elementId, points) {
+    function buildLatLngs(latE7, lonE7) {
+        if (!latE7 || !lonE7) return [];
+
+        const count = Math.min(latE7.length, lonE7.length);
+        const latLngs = [];
+
+        for (let i = 0; i < count; i++) {
+            const lat = latE7[i] / 1e7;
+            const lng = lonE7[i] / 1e7;
+
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                continue;
+            }
+
+            latLngs.push([lat, lng]);
+        }
+
+        return latLngs;
+    }
+
+    function renderTrackArrays(elementId, latE7, lonE7) {
         const instance = ensureMap(elementId);
-        if (!instance || !points || points.length === 0) return;
+        if (!instance) return;
 
         clear(elementId);
 
-        const latLngs = points.map(p => [p.lat, p.lng]);
+        const latLngs = buildLatLngs(latE7, lonE7);
+        if (latLngs.length === 0) return;
 
         instance.trackLayer = L.polyline(latLngs, {
             weight: 3,
@@ -100,7 +121,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
     }
 
     return {
-        render,
+        renderTrackArrays,
         clear,
         dispose
     };

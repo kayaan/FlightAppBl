@@ -5,7 +5,7 @@
 @inject IJSRuntime JS
 
 <div class="flight-map-root">
-    @if (mapPoints.Count == 0)
+    @if (!HasTrackPoints)
     {
         <div class="flight-map-empty" style="@($"height:{Height};")">
             No track available
@@ -17,7 +17,6 @@
     }
 </div>
 
-
 @code {
     [Parameter]
     public TrackArrays? Track { get; set; }
@@ -26,45 +25,19 @@
     public string Height { get; set; } = "100%";
 
     private readonly string mapId = $"flight-map-{Guid.NewGuid():N}";
-    private readonly List<MapPointDto> mapPoints = new();
-
     private string? lastRenderSignature;
     private bool disposed;
 
-    protected override void OnParametersSet()
-    {
-        mapPoints.Clear();
-
-        if (Track?.LatE7 is null || Track.LonE7 is null)
-            return;
-
-        if (Track.LatE7.Length == 0 || Track.LonE7.Length == 0)
-            return;
-
-        var count = Math.Min(Track.LatE7.Length, Track.LonE7.Length);
-
-        for (var i = 0; i < count; i++)
-        {
-            var lat = Track.LatE7[i] / 10_000_000.0;
-            var lng = Track.LonE7[i] / 10_000_000.0;
-
-            if (lat is < -90 or > 90 || lng is < -180 or > 180)
-                continue;
-
-            mapPoints.Add(new MapPointDto
-            {
-                Lat = lat,
-                Lng = lng
-            });
-        }
-    }
+    private bool HasTrackPoints =>
+        Track?.LatE7 is { Length: > 0 } &&
+        Track.LonE7 is { Length: > 0 };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (disposed)
             return;
 
-        if (mapPoints.Count == 0)
+        if (!HasTrackPoints)
         {
             if (lastRenderSignature is not null)
             {
@@ -80,7 +53,12 @@
         if (signature == lastRenderSignature)
             return;
 
-        await JS.InvokeVoidAsync("flightMapComponent.render", mapId, mapPoints);
+        await JS.InvokeVoidAsync(
+            "flightMapComponent.renderTrackArrays",
+            mapId,
+            Track!.LatE7,
+            Track.LonE7);
+
         lastRenderSignature = signature;
     }
 
@@ -102,15 +80,14 @@
 
     private string BuildRenderSignature()
     {
-        var first = mapPoints[0];
-        var last = mapPoints[^1];
+        var latE7 = Track!.LatE7;
+        var lonE7 = Track!.LonE7;
 
-        return $"{mapPoints.Count}:{first.Lat:F7}:{first.Lng:F7}:{last.Lat:F7}:{last.Lng:F7}";
-    }
+        var count = Math.Min(latE7.Length, lonE7.Length);
 
-    private sealed class MapPointDto
-    {
-        public double Lat { get; set; }
-        public double Lng { get; set; }
+        if (count == 0)
+            return "0";
+
+        return $"{count}:{latE7[0]}:{lonE7[0]}:{latE7[count - 1]}:{lonE7[count - 1]}";
     }
 }
