@@ -4,6 +4,8 @@
 @using FlightApp.Domain
 @using FlightApp.Services
 
+@using System.Globalization
+
 @inject FlightService FlightService
 
 <div class="flight-details-page">
@@ -110,7 +112,6 @@
     private bool isLoading;
     private string? errorMessage;
 
-    private double leftPanePercent = 60;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -140,8 +141,11 @@
         }
     }
 
+
+    private int leftPanePercent = 50;
+
     private string GetLeftPaneStyle()
-        => $"flex: 0 0 {leftPanePercent:F1}%; max-width: {leftPanePercent:F1}%;";
+        => $"flex: 0 0 {leftPanePercent}%;";
 
     private static string NullOrDash(string? value)
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
