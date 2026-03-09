@@ -3,10 +3,14 @@
 @using FlightApp.Components
 @using FlightApp.Domain
 @using FlightApp.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
 
-@using System.Globalization
+@implements IDisposable
 
 @inject FlightService FlightService
+@inject IJSRuntime JS
 
 <div class="flight-details-page">
     @if (isLoading)
@@ -89,17 +93,27 @@
             </div>
         </div>
 
-        <div class="flight-layout">
+        <div class="flight-layout" @ref="flightLayoutRef">
             <div class="left-pane" style="@GetLeftPaneStyle()">
                 <FlightCharts Track="trackArrays" />
             </div>
 
-            <div class="splitter" aria-hidden="true"></div>
+            <div class="splitter @(isResizing ? "splitter-active" : null)"
+                 @onmousedown="StartResize"
+                 @onmousedown:preventDefault="true"
+                 aria-label="Resize panels"
+                 role="separator">
+            </div>
 
             <div class="right-pane">
                 <FlightMap Track="trackArrays" Height="100%" />
             </div>
         </div>
+
+        @if (isResizing)
+        {
+            <div class="resize-overlay"></div>
+        }
     }
 </div>
 
@@ -112,6 +126,14 @@
     private bool isLoading;
     private string? errorMessage;
 
+    private int leftPanePercent = 50;
+    private bool isResizing;
+
+    private ElementReference flightLayoutRef;
+    private double layoutLeft;
+    private double layoutWidth;
+
+    private DotNetObjectReference<FlightDetails>? dotNetRef;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -141,11 +163,52 @@
         }
     }
 
-
-    private int leftPanePercent = 50;
-
     private string GetLeftPaneStyle()
         => $"flex: 0 0 {leftPanePercent}%;";
+
+    private async Task StartResize(MouseEventArgs _)
+    {
+        dotNetRef ??= DotNetObjectReference.Create(this);
+        isResizing = true;
+        await InvokeAsync(StateHasChanged);
+
+        await JS.InvokeVoidAsync("flightDetails.startResize", flightLayoutRef, dotNetRef);
+    }
+
+    [JSInvokable]
+    public Task SetResizeBounds(double left, double width)
+    {
+        layoutLeft = left;
+        layoutWidth = width;
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnResizeDrag(double clientX)
+    {
+        if (layoutWidth <= 0)
+            return Task.CompletedTask;
+
+        var relativeX = clientX - layoutLeft;
+        var newPercent = (int)Math.Round(relativeX / layoutWidth * 100.0);
+
+        leftPanePercent = Math.Clamp(newPercent, 30, 75);
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnResizeEnd()
+    {
+        isResizing = false;
+        await InvokeAsync(StateHasChanged);
+        await JS.InvokeVoidAsync("flightDetails.notifyResize");
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
 
     private static string NullOrDash(string? value)
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
