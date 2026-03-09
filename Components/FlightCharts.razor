@@ -1,0 +1,212 @@
+@namespace FlightApp.Components
+
+@using FlightApp.Domain
+@using Microsoft.JSInterop
+
+@implements IAsyncDisposable
+
+@inject IJSRuntime JS
+
+<div class="flight-charts-root">
+    @if (!HasTrack)
+    {
+        <div class="flight-charts-empty">
+            No chart data available
+        </div>
+    }
+    else
+    {
+        <div id="@altChartId" class="chart-panel"></div>
+        <div id="@varioChartId" class="chart-panel"></div>
+        <div id="@speedChartId" class="chart-panel"></div>
+    }
+</div>
+
+<style>
+    .flight-charts-root {
+        display: grid;
+        grid-template-rows: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+    }
+
+    .chart-panel {
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+    }
+
+    .flight-charts-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 300px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        color: #94a3b8;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public TrackArrays? Track { get; set; }
+
+    private readonly string altChartId = $"chart-alt-{Guid.NewGuid():N}";
+    private readonly string varioChartId = $"chart-vario-{Guid.NewGuid():N}";
+    private readonly string speedChartId = $"chart-speed-{Guid.NewGuid():N}";
+
+    private bool disposed;
+    private string? lastSignature;
+
+    private bool HasTrack =>
+        Track?.TDeltaMs is { Length: > 1 };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed)
+            return;
+
+        if (!HasTrack)
+        {
+            if (lastSignature is not null)
+            {
+                await JS.InvokeVoidAsync("flightCharts.dispose", altChartId);
+                await JS.InvokeVoidAsync("flightCharts.dispose", varioChartId);
+                await JS.InvokeVoidAsync("flightCharts.dispose", speedChartId);
+                lastSignature = null;
+            }
+
+            return;
+        }
+
+        var signature = BuildSignature();
+        if (signature == lastSignature)
+            return;
+
+        var payload = BuildPayload();
+        if (payload is null)
+            return;
+
+        await JS.InvokeVoidAsync(
+            "flightCharts.renderAll",
+            altChartId,
+            varioChartId,
+            speedChartId,
+            payload);
+
+        lastSignature = signature;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+            return;
+
+        disposed = true;
+
+        try
+        {
+            await JS.InvokeVoidAsync("flightCharts.dispose", altChartId);
+            await JS.InvokeVoidAsync("flightCharts.dispose", varioChartId);
+            await JS.InvokeVoidAsync("flightCharts.dispose", speedChartId);
+        }
+        catch
+        {
+        }
+    }
+
+    private object? BuildPayload()
+    {
+        if (Track?.TDeltaMs is not { Length: > 1 } tDeltaMs)
+            return null;
+
+        var count = tDeltaMs.Length;
+
+        double totalMs = 0;
+        var timeSec = new double[count];
+
+        for (var i = 0; i < count; i++)
+        {
+            totalMs += tDeltaMs[i];
+            timeSec[i] = totalMs / 1000.0;
+        }
+
+        var altitudeCm = SelectAltitudeSource();
+        var altitude = BuildSeries(timeSec, altitudeCm, v => v / 100.0);
+        var vario = BuildSeries(timeSec, Track.VarioCms, v => v / 100.0);
+        var speed = BuildSeries(timeSec, Track.SpeedCms, v => v * 0.036);
+
+        return new
+        {
+            altitudeTitle = "Altitude",
+            varioTitle = "Vario",
+            speedTitle = "Speed",
+
+            altitudeUnit = "m",
+            varioUnit = "m/s",
+            speedUnit = "km/h",
+
+            altitudeSeries = altitude,
+            varioSeries = vario,
+            speedSeries = speed
+        };
+    }
+
+    private int[]? SelectAltitudeSource()
+    {
+        if (Track?.AltBaroCm is { Length: > 0 })
+            return Track.AltBaroCm;
+
+        if (Track?.AltGpsCm is { Length: > 0 })
+            return Track.AltGpsCm;
+
+        return null;
+    }
+
+    private static List<double[]> BuildSeries(double[] timeSec, int[]? values, Func<int, double> selector)
+    {
+        var result = new List<double[]>();
+
+        if (values is null || values.Length == 0)
+            return result;
+
+        var count = Math.Min(timeSec.Length, values.Length);
+        if (count < 2)
+            return result;
+
+        for (var i = 0; i < count; i++)
+        {
+            result.Add(new[]
+            {
+                timeSec[i],
+                selector(values[i])
+            });
+        }
+
+        return result;
+    }
+
+    private string BuildSignature()
+    {
+        var t = Track!.TDeltaMs;
+        var count = t.Length;
+
+        var alt = SelectAltitudeSource();
+        var speed = Track.SpeedCms;
+        var vario = Track.VarioCms;
+
+        var altLen = alt?.Length ?? 0;
+        var speedLen = speed?.Length ?? 0;
+        var varioLen = vario?.Length ?? 0;
+
+        return $"{count}:{altLen}:{speedLen}:{varioLen}:{t[0]}:{t[count - 1]}";
+    }
+}

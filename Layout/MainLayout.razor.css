@@ -2,15 +2,22 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    overflow: hidden;
 }
 
 .topbar {
     padding: 10px 20px;
     background: #222;
     color: white;
+    flex: 0 0 auto;
 }
 
 .content {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 5px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
 }
