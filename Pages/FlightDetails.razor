@@ -1,0 +1,334 @@
+@page "/flights/{Id}"
+
+@using FlightApp.Components
+@using FlightApp.Domain
+@using FlightApp.Services
+@using Microsoft.AspNetCore.Components
+
+@inject FlightService FlightService
+
+<div class="flight-details-page" @onmousemove="OnResizeMouseMove" @onmouseup="StopResize" @onmouseleave="StopResize">
+
+    @if (isLoading)
+    {
+        <div class="state-card">
+            <div class="state-title">Loading flight…</div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="state-card state-error">
+            <div class="state-title">Could not load flight</div>
+            <div class="state-text">@errorMessage</div>
+        </div>
+    }
+    else if (flight is null)
+    {
+        <div class="state-card">
+            <div class="state-title">Flight not found</div>
+            <div class="state-text">No flight exists for the requested id.</div>
+        </div>
+    }
+    else
+    {
+        <div class="flight-header">
+
+            <div class="flight-kpis-top">
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Date / Time</div>
+                    <div class="hero-kpi-value">@FormatDateTimeShort(flight.Stats.StartTimeUtc)</div>
+                    <div class="hero-kpi-sub">@NullOrDash(flight.PilotId)</div>
+                </div>
+
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Duration</div>
+                    <div class="hero-kpi-value">@FormatDuration(flight.Stats.Duration)</div>
+                    <div class="hero-kpi-sub">@NullOrDash(flight.GliderId)</div>
+                </div>
+
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Distance</div>
+                    <div class="hero-kpi-value">@FormatDistanceKm(flight.Stats.TotalDistanceMeters)</div>
+                    <div class="hero-kpi-sub">Fixes @flight.Stats.FixCount</div>
+                </div>
+
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Altitude</div>
+                    <div class="hero-kpi-value">@FormatAltitudeMinMaxPreferred(flight.Stats)</div>
+                    <div class="hero-kpi-sub">Min / Max</div>
+                </div>
+
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Vario</div>
+                    <div class="hero-kpi-value">@FormatVarioMinMax(flight.Stats)</div>
+                    <div class="hero-kpi-sub">Min / Max</div>
+                </div>
+
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Speed</div>
+                    <div class="hero-kpi-value">@FormatSpeedAvgMax(flight.Stats)</div>
+                    <div class="hero-kpi-sub">Avg / Max</div>
+                </div>
+
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Takeoff / Landing Elevation</div>
+                    <div class="hero-kpi-value">
+                        @FormatAltitudeValue(GetTakeoffHeight(flight.Stats)) /
+                        @FormatAltitudeValue(GetLandingHeight(flight.Stats))
+                    </div>
+                    <div class="hero-kpi-sub">m (start / land)</div>
+                </div>
+
+                <div class="hero-kpi">
+                    <div class="hero-kpi-label">Altitude (Min / Max)</div>
+                    <div class="hero-kpi-value">
+                        @FormatAltitudeValue(GetAltitudeMin(flight.Stats)) /
+                        @FormatAltitudeValue(GetAltitudeMax(flight.Stats))
+                    </div>
+                    <div class="hero-kpi-sub">m</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flight-layout">
+            <div class="left-pane" style="@GetLeftPaneStyle()">
+                <section class="chart-panel">
+                    <div class="panel-title">Altitude</div>
+                    <div class="chart-body">Altitude chart placeholder</div>
+                </section>
+
+                <section class="chart-panel">
+                    <div class="panel-title">Vario</div>
+                    <div class="chart-body">Vario chart placeholder</div>
+                </section>
+
+                <section class="chart-panel">
+                    <div class="panel-title">Speed</div>
+                    <div class="chart-body">Speed chart placeholder</div>
+                </section>
+            </div>
+
+            <div class="splitter @(isResizing ? "splitter-active" : null)" @onmousedown="StartResize"></div>
+
+            <div class="right-pane">
+
+                <div class="map-title">Map</div>
+                <FlightMap Track="trackArrays" Height="100%" />
+            </div>
+
+        </div>
+    }
+
+    @if (isResizing)
+    {
+        <div class="resize-overlay"></div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private Flight? flight;
+    private bool isLoading;
+    private string? errorMessage;
+
+    private double leftPanePercent = 56;
+    private bool isResizing;
+
+    private TrackArrays? trackArrays;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        flight = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(Id))
+            {
+                errorMessage = "Missing flight id.";
+                return;
+            }
+
+            flight = await FlightService.GetFlightByIdAsync(Id);
+
+            trackArrays = await FlightService.GetTrackAsync(Id);
+
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnResizeMouseMove(MouseEventArgs e)
+    {
+        if (!isResizing)
+            return;
+
+        var width = e.ClientX;
+        if (width <= 0)
+            return;
+
+        var viewportWidth = 1800.0;
+        var approxPagePadding = 48.0;
+        var usableWidth = Math.Max(800.0, viewportWidth - approxPagePadding);
+
+        var newPercent = e.ClientX / usableWidth * 100.0;
+        leftPanePercent = Math.Clamp(newPercent, 35.0, 72.0);
+    }
+
+    private void StartResize(MouseEventArgs _)
+    {
+        isResizing = true;
+    }
+
+    private void StopResize()
+    {
+        isResizing = false;
+    }
+
+
+
+    private string GetLeftPaneStyle()
+        => $"width: {leftPanePercent:F1}%";
+
+    private static string NullOrDash(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    private static string FormatDateTimeShort(DateTime? value)
+    {
+        if (!value.HasValue)
+            return "—";
+
+        return value.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm");
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+
+        return $"{duration.Minutes}m";
+    }
+
+    private static string FormatDistanceKm(double totalDistanceMeters)
+        => $"{totalDistanceMeters / 1000.0:0.0} km";
+
+    private static string FormatAltitudeValue(int? value)
+    {
+        if (!value.HasValue)
+            return "—";
+
+        return $"{value.Value} m";
+    }
+
+    private static string FormatAltitudeMinMaxPreferred(FlightStats stats)
+    {
+        var min = stats.AltBaroMin ?? stats.AltGpsMin;
+        var max = stats.AltBaroMax ?? stats.AltGpsMax;
+
+        if (!min.HasValue && !max.HasValue)
+            return "—";
+
+        var minText = min.HasValue ? $"{min.Value}" : "—";
+        var maxText = max.HasValue ? $"{max.Value}" : "—";
+
+        return $"{minText} / {maxText} m";
+    }
+
+    private static string FormatAltitudeStartEnd(int? start, int? end)
+    {
+        if (!start.HasValue && !end.HasValue)
+            return "—";
+
+        var startText = start.HasValue ? $"{start.Value}" : "—";
+        var endText = end.HasValue ? $"{end.Value}" : "—";
+
+        return $"{startText} / {endText} m";
+    }
+
+    private static string FormatAltitudeGainLoss(int? gain, int? loss)
+    {
+        if (!gain.HasValue && !loss.HasValue)
+            return "—";
+
+        var gainText = gain.HasValue ? $"{gain.Value}" : "—";
+        var lossText = loss.HasValue ? $"{loss.Value}" : "—";
+
+        return $"{gainText} / {lossText} m";
+    }
+
+    private static string FormatAltitudePairExplicit(int? baro, int? gps)
+    {
+        var baroText = baro.HasValue ? $"{baro.Value} m" : "—";
+        var gpsText = gps.HasValue ? $"{gps.Value} m" : "—";
+
+        return $"Baro {baroText} · GPS {gpsText}";
+    }
+
+    private static string FormatVario(double? value)
+    {
+        if (!value.HasValue)
+            return "—";
+
+        return $"{value.Value:+0.0;-0.0;0.0} m/s";
+    }
+
+    private static string FormatVarioMinMax(FlightStats stats)
+    {
+        var min = stats.MinVarioMs;
+        var max = stats.MaxVarioMs;
+
+        if (!min.HasValue && !max.HasValue)
+            return "—";
+
+        var minText = min.HasValue ? $"{min.Value:0.0}" : "—";
+        var maxText = max.HasValue ? $"{max.Value:0.0}" : "—";
+
+        return $"{minText} / {maxText} m/s";
+    }
+
+    private static string FormatSpeed(double? value)
+    {
+        if (!value.HasValue)
+            return "—";
+
+        return $"{value.Value:0.0} km/h";
+    }
+
+    private static string FormatSpeedAvgMax(FlightStats stats)
+    {
+        var avgText = stats.AvgGroundSpeedKmh.HasValue ? $"{stats.AvgGroundSpeedKmh.Value:0.0}" : "—";
+        var maxText = stats.MaxGroundSpeedKmh.HasValue ? $"{stats.MaxGroundSpeedKmh.Value:0.0}" : "—";
+
+        return $"{avgText} / {maxText} km/h";
+    }
+
+    private static string FormatSpeedCompact(double? avg, double? max)
+    {
+        var avgText = avg.HasValue ? $"{avg.Value:0.0}" : "—";
+        var maxText = max.HasValue ? $"{max.Value:0.0}" : "—";
+
+        return $"{avgText} / {maxText} km/h";
+    }
+
+    private static int? GetTakeoffHeight(FlightStats stats)
+        => stats.AltBaroStart ?? stats.AltGpsStart;
+
+    private static int? GetLandingHeight(FlightStats stats)
+        => stats.AltBaroEnd ?? stats.AltGpsEnd;
+
+
+    private static int? GetAltitudeMin(FlightStats stats)
+    => stats.AltBaroMin ?? stats.AltGpsMin;
+
+    private static int? GetAltitudeMax(FlightStats stats)
+        => stats.AltBaroMax ?? stats.AltGpsMax;
+}

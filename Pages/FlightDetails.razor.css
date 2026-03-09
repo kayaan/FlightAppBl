@@ -1,0 +1,298 @@
+    .flight-details-page {
+        padding: 10px;
+        margin: 0 auto;
+        color: #0f172a;
+        user-select: none;
+    }
+
+    .page-title {
+        margin: 0 0 14px 0;
+        font-size: 1.8rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    .flight-header {
+        margin-bottom: 18px;
+    }
+
+    .flight-kpis-top {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .hero-kpi {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: #fff;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+    }
+
+    .hero-kpi-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .hero-kpi-value {
+        font-weight: 800;
+        font-size: 1.08rem;
+        line-height: 1.15;
+        color: #0f172a;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .hero-kpi-sub {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 4px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px 14px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .detail-item {
+        min-width: 0;
+    }
+
+    .detail-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 2px;
+    }
+
+    .detail-value {
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #0f172a;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.25;
+    }
+
+    .flight-layout {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        min-height: 760px;
+    }
+
+    .left-pane {
+        display: grid;
+        grid-template-rows: repeat(3, minmax(180px, 1fr));
+        gap: 14px;
+        min-width: 420px;
+        max-width: calc(100% - 240px);
+        padding-right: 14px;
+        flex: 0 0 auto;
+    }
+
+    .right-pane {
+        flex: 1 1 auto;
+        min-width: 240px;
+        padding-left: 14px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+        min-height: 220px;
+    }
+
+    .chart-body {
+        height: calc(100% - 34px);
+        min-height: 160px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+
+    .panel-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+
+        padding: 8px 12px;
+
+        border-bottom: 1px solid #f1f5f9;
+        background: #fafafa;
+    }
+
+    .map-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .panel-title {
+        padding: 12px 14px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f8fafc;
+    }
+
+    .chart-body {
+        min-height: 170px;
+        height: calc(100% - 45px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-size: 0.95rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .splitter {
+        width: 12px;
+        flex: 0 0 12px;
+        cursor: col-resize;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .splitter::before {
+        content: "";
+        width: 4px;
+        height: 60%;
+        border-radius: 4px;
+        background: #cbd5e1;
+        transition: background 0.15s;
+    }
+
+    .splitter:hover::before {
+        background: #64748b;
+    }
+
+    .splitter-active::before {
+        background: #334155;
+    }
+
+    .map-title {
+        margin: 2px 0 8px 0;
+    }
+
+    .map-surface {
+        flex: 1 1 auto;
+        min-height: 708px;
+        border-radius: 0;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-size: 0.95rem;
+    }
+
+    .state-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        padding: 20px;
+    }
+
+    .state-error {
+        border-color: #fecaca;
+        background: #fff7f7;
+    }
+
+    .state-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .state-text {
+        margin-top: 6px;
+        color: #64748b;
+    }
+
+    .resize-overlay {
+        position: fixed;
+        inset: 0;
+        cursor: col-resize;
+        z-index: 9999;
+    }
+
+    @media (max-width: 1200px) {
+        .flight-layout {
+            flex-direction: column;
+            min-height: auto;
+        }
+
+        .left-pane {
+            width: 100% !important;
+            max-width: none;
+            min-width: 0;
+            padding-right: 0;
+        }
+
+        .splitter {
+            display: none;
+        }
+
+        .right-pane {
+            padding-left: 0;
+            margin-top: 14px;
+        }
+
+        .map-surface {
+            min-height: 420px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .flight-details-page {
+            padding: 16px;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .flight-kpis-top {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .details-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 560px) {
+
+        .flight-kpis-top,
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .map-surface {
+        flex: 1 1 auto;
+        min-height: 708px;
+        border-radius: 0;
+        background: #eef2f7;
+    }

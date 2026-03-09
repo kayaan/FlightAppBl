@@ -9,6 +9,8 @@
 @inject IJSRuntime JS
 @inject FlightService FlightService
 
+@inject NavigationManager Nav
+
 <PageTitle>Flights</PageTitle>
 
 <div class="flights-page">
@@ -39,21 +41,44 @@
             <div class="table-scroll">
                 <table class="flights-table">
                     <thead>
-                        <th>Date</th>
-                        <th>Start</th>
-                        <th>Pilot</th>
-                        <th>Glider</th>
-                        <th class="num">Duration</th>
-                        <th class="num">Distance</th>
-                        <th class="num">Altitude</th>
-                        <th class="num">Climb</th>
+                        <tr>
+                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Date)">
+                                Date @SortIndicator(FlightSortColumn.Date)
+                            </th>
+                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Start)">
+                                Start @SortIndicator(FlightSortColumn.Start)
+                            </th>
+                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Pilot)">
+                                Pilot @SortIndicator(FlightSortColumn.Pilot)
+                            </th>
+                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Glider)">
+                                Glider @SortIndicator(FlightSortColumn.Glider)
+                            </th>
+                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Duration)">
+                                Duration @SortIndicator(FlightSortColumn.Duration)
+                            </th>
+                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Distance)">
+                                Distance @SortIndicator(FlightSortColumn.Distance)
+                            </th>
+                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Altitude)">
+                                Altitude @SortIndicator(FlightSortColumn.Altitude)
+                            </th>
+                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Climb)">
+                                Climb @SortIndicator(FlightSortColumn.Climb)
+                            </th>
+                        </tr>
                     </thead>
                     <tbody>
-                        @foreach (var flight in flights)
+                        @foreach (var flight in GetSortedFlights())
                         {
-                            <tr class="flight-row">
-                                <td>@FormatDate(flight.Date)</td>
-                                <td>@FormatStartTime(flight.Stats.StartTimeUtc)</td>
+                            <tr class="flight-row" @onclick="() => OpenFlight(flight.Id)">
+                                <td>
+                                    <div class="main-value">@FormatDate(flight)</div>
+                                </td>
+
+                                <td>
+                                    <div class="main-value">@FormatStartTime(flight.Stats.StartTimeUtc)</div>
+                                </td>
 
                                 <td>
                                     <div class="main-value">@NullOrDash(flight.PilotId)</div>
@@ -70,20 +95,20 @@
                                 <td class="num">
                                     <div class="main-value">@FormatDistanceKm(flight.Stats.TotalDistanceMeters)</div>
                                 </td>
-
                                 <td class="num">
-                                    <div class="stack-value">
-                                        <span class="value-positive">@FormatElavationMax(flight.Stats)</span>
-                                        <span class="separator">/</span>
-                                        <span class="value-muted">@FormatElavationMin(flight.Stats)</span>
+                                    <div class="alt-pair">
+                                        <span                            class="alt-num">@FormatAltitudeNumber(GetPreferredMaxAltitude(flight.Stats))</span>
+                                        <span class="alt-sep">/</span>
+                                        <span                            class="alt-num">@FormatAltitudeNumber(GetPreferredMinAltitude(flight.Stats))</span>
+                                        <span class="alt-unit">m</span>
                                     </div>
                                 </td>
-
                                 <td class="num">
-                                    <div class="stack-value">
-                                        <span class="value-positive">@FormatMaxClimb(flight.Stats.MaxVarioMs)</span>
-                                        <span class="separator">/</span>
-                                        <span class="value-negative">@FormatMinClimb(flight.Stats.MinVarioMs)</span>
+                                    <div class="climb-pair">
+                                        <span class="climb-num">@FormatClimbNumber(flight.Stats.MaxVarioMs)</span>
+                                        <span class="climb-sep">/</span>
+                                        <span class="climb-num">@FormatClimbNumber(flight.Stats.MinVarioMs)</span>
+                                        <span class="climb-unit">m/s</span>
                                     </div>
                                 </td>
                             </tr>
@@ -95,185 +120,12 @@
     }
 </div>
 
-<style>
-    .flights-page {
-        padding: 24px;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-
-    .flights-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-
-    .page-title {
-        margin: 0;
-        font-size: 2rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-    }
-
-    .page-subtitle {
-        margin: 6px 0 0 0;
-        color: #6b7280;
-        font-size: 0.95rem;
-    }
-
-    .import-button {
-        border: none;
-        border-radius: 14px;
-        padding: 12px 18px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        cursor: pointer;
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        color: white;
-        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.20);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .import-button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 14px 36px rgba(37, 99, 235, 0.28);
-    }
-
-    .table-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-    }
-
-    .table-scroll {
-        overflow-x: auto;
-    }
-
-    .flights-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        min-width: 900px;
-    }
-
-    .flights-table thead th {
-        background: #f8fafc;
-        color: #475569;
-        font-size: 0.82rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        padding: 16px 18px;
-        border-bottom: 1px solid #e5e7eb;
-        text-align: left;
-        white-space: nowrap;
-    }
-
-    .flights-table thead th.num {
-        text-align: right;
-    }
-
-    .flights-table tbody td {
-        padding: 16px 18px;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        background: white;
-    }
-
-    .flight-row:hover td {
-        background: #f8fbff;
-    }
-
-    .flights-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-    .main-value {
-        font-size: 0.96rem;
-        font-weight: 600;
-        color: #0f172a;
-        white-space: nowrap;
-    }
-
-    .num {
-        text-align: right;
-    }
-
-    .stack-value {
-        display: inline-flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 8px;
-        white-space: nowrap;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .separator {
-        color: #94a3b8;
-    }
-
-    .value-positive {
-        color: #0f172a;
-        font-weight: 700;
-    }
-
-    .value-negative {
-        color: #b91c1c;
-        font-weight: 700;
-    }
-
-    .value-muted {
-        color: #64748b;
-        font-weight: 600;
-    }
-
-    .empty-state {
-        border: 1px dashed #cbd5e1;
-        border-radius: 20px;
-        padding: 48px 24px;
-        background: linear-gradient(180deg, #ffffff, #f8fafc);
-        text-align: center;
-    }
-
-    .empty-icon {
-        font-size: 2rem;
-        margin-bottom: 12px;
-    }
-
-    .empty-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .empty-text {
-        margin-top: 8px;
-        color: #64748b;
-    }
-
-    @@media (max-width: 768px) {
-        .flights-page {
-            padding: 16px;
-        }
-
-        .page-title {
-            font-size: 1.6rem;
-        }
-
-        .import-button {
-            width: 100%;
-        }
-    }
-</style>
-
 @code {
     private InputFile? fileInput;
     private List<Flight> flights = new();
+
+    private FlightSortColumn sortColumn = FlightSortColumn.Date;
+    private bool sortDescending = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -288,6 +140,14 @@
         }
     }
 
+    private void OpenFlight(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return;
+
+        Nav.NavigateTo($"/flights/{id}");
+    }
+
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         var files = e.GetMultipleFiles();
@@ -297,7 +157,6 @@
         {
             using var stream = file.OpenReadStream();
             using var reader = new StreamReader(stream);
-
             contents.Add(await reader.ReadToEndAsync());
         }
 
@@ -305,18 +164,116 @@
         flights = await FlightService.GetFlightsAsync();
     }
 
+    private void SortBy(FlightSortColumn column)
+    {
+        if (sortColumn == column)
+        {
+            sortDescending = !sortDescending;
+        }
+        else
+        {
+            sortColumn = column;
+            sortDescending = column switch
+            {
+                FlightSortColumn.Date => true,
+                FlightSortColumn.Start => true,
+                FlightSortColumn.Duration => true,
+                FlightSortColumn.Distance => true,
+                FlightSortColumn.Altitude => true,
+                FlightSortColumn.Climb => true,
+                _ => false
+            };
+        }
+    }
+
+
+
+    private IEnumerable<Flight> GetSortedFlights()
+    {
+        IEnumerable<Flight> query = sortColumn switch
+        {
+            FlightSortColumn.Date => sortDescending
+                ? flights.OrderByDescending(GetSortDateTime)
+                : flights.OrderBy(GetSortDateTime),
+
+            FlightSortColumn.Start => sortDescending
+                ? flights.OrderByDescending(f => f.Stats.StartTimeUtc)
+                : flights.OrderBy(f => f.Stats.StartTimeUtc),
+
+            FlightSortColumn.Pilot => sortDescending
+                ? flights.OrderByDescending(f => f.PilotId ?? string.Empty)
+                : flights.OrderBy(f => f.PilotId ?? string.Empty),
+
+            FlightSortColumn.Glider => sortDescending
+                ? flights.OrderByDescending(f => f.GliderId ?? string.Empty)
+                : flights.OrderBy(f => f.GliderId ?? string.Empty),
+
+            FlightSortColumn.Duration => sortDescending
+                ? flights.OrderByDescending(f => f.Stats.Duration)
+                : flights.OrderBy(f => f.Stats.Duration),
+
+            FlightSortColumn.Distance => sortDescending
+                ? flights.OrderByDescending(f => f.Stats.TotalDistanceMeters)
+                : flights.OrderBy(f => f.Stats.TotalDistanceMeters),
+
+            FlightSortColumn.Altitude => sortDescending
+                ? flights.OrderByDescending(f => GetPreferredMaxAltitude(f.Stats) ?? int.MinValue)
+                : flights.OrderBy(f => GetPreferredMaxAltitude(f.Stats) ?? int.MinValue),
+
+            FlightSortColumn.Climb => sortDescending
+                ? flights.OrderByDescending(f => f.Stats.MaxVarioMs ?? double.MinValue)
+                : flights.OrderBy(f => f.Stats.MaxVarioMs ?? double.MinValue),
+
+            _ => flights.OrderByDescending(GetSortDateTime)
+        };
+
+        return query;
+    }
+
+    private static DateTime GetSortDateTime(Flight flight)
+        => flight.Stats.StartTimeUtc ?? flight.CreatedAtUtc;
+
+    private static string SortIndicator(FlightSortColumn column)
+    {
+        return column switch
+        {
+            _ => ""
+        };
+    }
+
+    private string SortIndicatorMarkup(FlightSortColumn column)
+    {
+        if (sortColumn != column)
+            return "⇅";
+
+        return sortDescending ? "↓" : "↑";
+    }
+
     private static string NullOrDash(string? value)
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
 
-    private static string FormatDate(string? date)
-        => string.IsNullOrWhiteSpace(date) ? "—" : date;
+    private static string FormatDate(Flight flight)
+    {
+        if (flight.Stats.StartTimeUtc.HasValue)
+        {
+            return flight.Stats.StartTimeUtc.Value.ToLocalTime().ToString("dd MMM yyyy");
+        }
+
+        return string.IsNullOrWhiteSpace(flight.Date) ? "—" : flight.Date;
+    }
+
+    private static string FormatStartTime(DateTime? timeUtc)
+    {
+        if (!timeUtc.HasValue)
+            return "—";
+
+        return timeUtc.Value.ToLocalTime().ToString("HH:mm");
+    }
 
     private static string FormatDuration(TimeSpan duration)
     {
         if (duration.TotalHours >= 1)
-        {
             return $"{(int)duration.TotalHours}h {duration.Minutes}m";
-        }
 
         return $"{duration.Minutes}m";
     }
@@ -330,16 +287,16 @@
     private static int? GetPreferredMinAltitude(FlightStats stats)
         => stats.AltBaroMin ?? stats.AltGpsMin;
 
-    private static string FormatElavationMax(FlightStats stats)
+    private static string FormatAltitudeMax(FlightStats stats)
     {
         var value = GetPreferredMaxAltitude(stats);
-        return value.HasValue ? $"{value.Value} m" : "—";
+        return value.HasValue ? $"{value.Value,4}" : "—";
     }
 
-    private static string FormatElavationMin(FlightStats stats)
+    private static string FormatAltitudeMin(FlightStats stats)
     {
         var value = GetPreferredMinAltitude(stats);
-        return value.HasValue ? $"{value.Value} m" : "—";
+        return value.HasValue ? $"{value.Value,4}" : "—";
     }
 
     private static string FormatMaxClimb(double? value)
@@ -348,11 +305,26 @@
     private static string FormatMinClimb(double? value)
         => value.HasValue ? $"{value.Value:+0.0;-0.0;0.0} m/s" : "—";
 
-    private static string FormatStartTime(DateTime? time)
+    private static string FormatAltitudeNumber(int? value)
+        => value.HasValue ? value.Value.ToString() : "—";
+
+    private static string FormatClimbNumber(double? value)
     {
-        if (!time.HasValue)
+        if (!value.HasValue)
             return "—";
 
-        return time.Value.ToLocalTime().ToString("HH:mm");
+        return value.Value.ToString("+0.0;-0.0;0.0");
+    }
+
+    private enum FlightSortColumn
+    {
+        Date,
+        Start,
+        Pilot,
+        Glider,
+        Duration,
+        Distance,
+        Altitude,
+        Climb
     }
 }
