@@ -1,12 +1,12 @@
 .content {
     flex: 1 1 auto;
     min-height: 0;
+    width: 100%;
     padding: 5px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    width: 100%;
 }
 
 .flight-details-page {
@@ -25,17 +25,9 @@
     cursor: default;
 }
 
-.page-title {
-    margin: 0 0 14px 0;
-    font-size: 1.8rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    flex: 0 0 auto;
-}
-
 .flight-header {
-    margin-bottom: 18px;
     flex: 0 0 auto;
+    margin-bottom: 18px;
 }
 
 .flight-kpis-top {
@@ -54,9 +46,9 @@
 }
 
 .hero-kpi-label {
+    margin-bottom: 4px;
     font-size: 0.75rem;
     color: #64748b;
-    margin-bottom: 4px;
 }
 
 .hero-kpi-value {
@@ -69,40 +61,13 @@
 }
 
 .hero-kpi-sub {
-    font-size: 0.75rem;
-    color: #64748b;
     margin-top: 4px;
+    font-size: 0.75rem;
     line-height: 1.2;
+    color: #64748b;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.details-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 8px 14px;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.detail-item {
-    min-width: 0;
-}
-
-.detail-label {
-    font-size: 0.75rem;
-    color: #64748b;
-    margin-bottom: 2px;
-}
-
-.detail-value {
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: #0f172a;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.25;
 }
 
 .flight-layout {
@@ -113,6 +78,7 @@
     min-height: 0;
     overflow: hidden;
 }
+
 .left-pane {
     min-width: 420px;
     min-height: 0;
@@ -123,16 +89,44 @@
     flex-direction: column;
 }
 
-.chart-panel {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+.right-pane {
+    flex: 1 1 auto;
+    min-width: 240px;
+    min-height: 0;
+    padding-left: 14px;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
+}
+
+.splitter {
+    width: 12px;
+    flex: 0 0 12px;
+    position: relative;
+    cursor: col-resize;
+}
+
+.splitter::before {
+    content: "";
+    position: absolute;
+    top: 20%;
+    bottom: 20%;
+    left: 4px;
+    width: 4px;
+    border-radius: 4px;
+    background: #cbd5e1;
+}
+
+.chart-panel {
     min-height: 0;
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
 }
 
 .chart-body {
@@ -154,55 +148,22 @@
     min-height: 0;
 }
 
-.right-pane {
-    flex: 1 1 auto;
-    min-width: 240px;
-    min-height: 0;
-    padding-left: 14px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.chart-panel {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-    overflow: hidden;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
 .panel-title {
+    flex: 0 0 auto;
+    padding: 12px 14px;
     font-size: 0.8rem;
     font-weight: 600;
     color: #64748b;
-    padding: 12px 14px;
     border-bottom: 1px solid #e5e7eb;
     background: #f8fafc;
-    flex: 0 0 auto;
 }
 
 .map-title {
+    flex: 0 0 auto;
     margin: 2px 0 8px 0;
     font-size: 0.9rem;
     font-weight: 700;
     color: #334155;
-    flex: 0 0 auto;
-}
-
-.chart-body {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #94a3b8;
-    font-size: 0.95rem;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    overflow: hidden;
 }
 
 .map-surface {
@@ -219,18 +180,17 @@
     overflow: hidden;
 }
 
-/* wichtig für Leaflet */
 .map-surface .leaflet-container {
     width: 100%;
     height: 100%;
 }
 
 .state-card {
+    padding: 20px;
     border: 1px solid #e5e7eb;
     border-radius: 16px;
     background: #ffffff;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
-    padding: 20px;
 }
 
 .state-error {
@@ -247,19 +207,6 @@
 .state-text {
     margin-top: 6px;
     color: #64748b;
-}
-
-.resize-overlay {
-    position: fixed;
-    inset: 0;
-    cursor: col-resize;
-    z-index: 9999;
-    pointer-events: none;
-}
-
-.splitter,
-.splitter::before {
-    cursor: col-resize;
 }
 
 @media (max-width: 1200px) {
@@ -281,7 +228,6 @@
         min-width: 0;
         min-height: auto;
         padding-right: 0;
-        grid-template-rows: repeat(3, minmax(220px, auto));
         overflow: visible;
     }
 
@@ -306,23 +252,13 @@
         padding: 16px;
     }
 
-    .page-title {
-        font-size: 1.5rem;
-    }
-
     .flight-kpis-top {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .details-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 560px) {
-
-    .flight-kpis-top,
-    .details-grid {
+    .flight-kpis-top {
         grid-template-columns: 1fr;
     }
 }

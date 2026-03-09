@@ -92,7 +92,7 @@
                 <FlightCharts Track="trackArrays" />
             </div>
 
-            <div class="splitter"></div>
+            <div class="splitter" aria-hidden="true"></div>
 
             <div class="right-pane">
                 <FlightMap Track="trackArrays" Height="100%" />
@@ -107,7 +107,6 @@
 
     private Flight? flight;
     private TrackArrays? trackArrays;
-
     private bool isLoading;
     private string? errorMessage;
 
@@ -142,7 +141,7 @@
     }
 
     private string GetLeftPaneStyle()
-       => $"flex: 0 0 {leftPanePercent:F1}%; max-width: {leftPanePercent:F1}%;";
+        => $"flex: 0 0 {leftPanePercent:F1}%; max-width: {leftPanePercent:F1}%;";
 
     private static string NullOrDash(string? value)
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
