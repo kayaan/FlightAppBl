@@ -6,13 +6,16 @@ public class FlightService
 {
     private readonly FlightImportService _flightImportService;
     private readonly IFlightStorage _flightStorage;
+    private readonly TrackBinarySerializer _trackBinarySerializer;
 
     public FlightService(
         FlightImportService flightImportService,
-        IFlightStorage flightStorage)
+        IFlightStorage flightStorage,
+        TrackBinarySerializer trackBinarySerializer)
     {
         _flightImportService = flightImportService;
         _flightStorage = flightStorage;
+        _trackBinarySerializer = trackBinarySerializer;
     }
 
     public async Task ImportFilesAsync(IEnumerable<string> igcContents)
@@ -31,5 +34,14 @@ public class FlightService
     public Task<Flight?> GetFlightByIdAsync(string id)
     {
         return _flightStorage.GetFlightByIdAsync(id);
+    }
+
+    public async Task<TrackArrays?> GetTrackAsync(string flightId)
+    {
+        var binary = await _flightStorage.GetTrackAsync(flightId);
+        if (binary is null)
+            return null;
+
+        return _trackBinarySerializer.Deserialize(binary);
     }
 }

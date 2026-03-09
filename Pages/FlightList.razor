@@ -7,66 +7,271 @@
 @using Microsoft.AspNetCore.Components.Forms
 
 @inject IJSRuntime JS
-
 @inject FlightService FlightService
 
+<PageTitle>Flights</PageTitle>
 
-<h1>Flights</h1>
+<div class="flights-page">
+    <div class="flights-header">
+        <div>
+            <h1 class="page-title">Flights</h1>
+            <p class="page-subtitle">Imported IGC flights with the most relevant stats.</p>
+        </div>
 
-<button @onclick="OpenImport">
-    Import IGC
-</button>
-<InputFile @ref="fileInput" OnChange="HandleFileSelected" style="display: none;" accept=".igc" multiple />
+        <button class="import-button" @onclick="OpenImport">
+            Import IGC
+        </button>
+    </div>
 
-@if (flights.Count == 0)
-{
-    <p>No flights imported.</p>
-}
-else
-{
-    <table style="margin-top:20px; width:100%; border-collapse:collapse">
-        <thead>
-            <tr style="border-bottom:2px solid #ccc">
-                <th>Date</th>
-                <th>Pilot</th>
-                <th>Glider</th>
-                <th>Fixes</th>
-                <th>Duration</th>
-                <th>Distance km</th>
-                <th>Max Alt GPS</th>
-                <th>Max Alt Baro</th>
-                <th>Avg Speed</th>
-                <th>Max Speed</th>
-                <th>Avg Vario</th>
-                <th>Climb</th>
-                <th>Sink</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var f in flights)
-            {
-                <tr style="border-bottom:1px solid #eee">
-                    <td>@f.Date</td>
-                    <td>@f.PilotId</td>
-                    <td>@f.GliderId</td>
-                    <td>@f.Stats.FixCount</td>
-                    <td>@f.Stats.Duration</td>
-                    <td>@(Math.Round(f.Stats.TotalDistanceMeters / 1000.0, 1))</td>
-                    <td>@f.Stats.AltGpsMax</td>
-                    <td>@f.Stats.AltBaroMax</td>
-                    <td>@(f.Stats.AvgGroundSpeedKmh?.ToString("F1"))</td>
-                    <td>@(f.Stats.MaxGroundSpeedKmh?.ToString("F1"))</td>
-                    <td>@(f.Stats.AvgVarioMs?.ToString("F2"))</td>
-                    <td>@Math.Round(f.Stats.TotalClimbMeters, 0)</td>
-                    <td>@Math.Round(f.Stats.TotalSinkMeters, 0)</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+    <InputFile @ref="fileInput" OnChange="HandleFileSelected" style="display: none;" accept=".igc" multiple />
+
+    @if (flights.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon">🪂</div>
+            <div class="empty-title">No flights imported yet</div>
+            <div class="empty-text">Import one or more IGC files to see your flight list.</div>
+        </div>
+    }
+    else
+    {
+        <div class="table-card">
+            <div class="table-scroll">
+                <table class="flights-table">
+                    <thead>
+                        <th>Date</th>
+                        <th>Start</th>
+                        <th>Pilot</th>
+                        <th>Glider</th>
+                        <th class="num">Duration</th>
+                        <th class="num">Distance</th>
+                        <th class="num">Altitude</th>
+                        <th class="num">Climb</th>
+                    </thead>
+                    <tbody>
+                        @foreach (var flight in flights)
+                        {
+                            <tr class="flight-row">
+                                <td>@FormatDate(flight.Date)</td>
+                                <td>@FormatStartTime(flight.Stats.StartTimeUtc)</td>
+
+                                <td>
+                                    <div class="main-value">@NullOrDash(flight.PilotId)</div>
+                                </td>
+
+                                <td>
+                                    <div class="main-value">@NullOrDash(flight.GliderId)</div>
+                                </td>
+
+                                <td class="num">
+                                    <div class="main-value">@FormatDuration(flight.Stats.Duration)</div>
+                                </td>
+
+                                <td class="num">
+                                    <div class="main-value">@FormatDistanceKm(flight.Stats.TotalDistanceMeters)</div>
+                                </td>
+
+                                <td class="num">
+                                    <div class="stack-value">
+                                        <span class="value-positive">@FormatElavationMax(flight.Stats)</span>
+                                        <span class="separator">/</span>
+                                        <span class="value-muted">@FormatElavationMin(flight.Stats)</span>
+                                    </div>
+                                </td>
+
+                                <td class="num">
+                                    <div class="stack-value">
+                                        <span class="value-positive">@FormatMaxClimb(flight.Stats.MaxVarioMs)</span>
+                                        <span class="separator">/</span>
+                                        <span class="value-negative">@FormatMinClimb(flight.Stats.MinVarioMs)</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .flights-page {
+        padding: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .flights-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .page-title {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    .page-subtitle {
+        margin: 6px 0 0 0;
+        color: #6b7280;
+        font-size: 0.95rem;
+    }
+
+    .import-button {
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.20);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .import-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 36px rgba(37, 99, 235, 0.28);
+    }
+
+    .table-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .table-scroll {
+        overflow-x: auto;
+    }
+
+    .flights-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 900px;
+    }
+
+    .flights-table thead th {
+        background: #f8fafc;
+        color: #475569;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 16px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .flights-table thead th.num {
+        text-align: right;
+    }
+
+    .flights-table tbody td {
+        padding: 16px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        background: white;
+    }
+
+    .flight-row:hover td {
+        background: #f8fbff;
+    }
+
+    .flights-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .main-value {
+        font-size: 0.96rem;
+        font-weight: 600;
+        color: #0f172a;
+        white-space: nowrap;
+    }
+
+    .num {
+        text-align: right;
+    }
+
+    .stack-value {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .separator {
+        color: #94a3b8;
+    }
+
+    .value-positive {
+        color: #0f172a;
+        font-weight: 700;
+    }
+
+    .value-negative {
+        color: #b91c1c;
+        font-weight: 700;
+    }
+
+    .value-muted {
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    .empty-state {
+        border: 1px dashed #cbd5e1;
+        border-radius: 20px;
+        padding: 48px 24px;
+        background: linear-gradient(180deg, #ffffff, #f8fafc);
+        text-align: center;
+    }
+
+    .empty-icon {
+        font-size: 2rem;
+        margin-bottom: 12px;
+    }
+
+    .empty-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .empty-text {
+        margin-top: 8px;
+        color: #64748b;
+    }
+
+    @@media (max-width: 768px) {
+        .flights-page {
+            padding: 16px;
+        }
+
+        .page-title {
+            font-size: 1.6rem;
+        }
+
+        .import-button {
+            width: 100%;
+        }
+    }
+</style>
 
 @code {
-
     private InputFile? fileInput;
     private List<Flight> flights = new();
 
@@ -74,7 +279,6 @@ else
     {
         flights = await FlightService.GetFlightsAsync();
     }
-
 
     private async Task OpenImport()
     {
@@ -98,7 +302,57 @@ else
         }
 
         await FlightService.ImportFilesAsync(contents);
-
         flights = await FlightService.GetFlightsAsync();
+    }
+
+    private static string NullOrDash(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    private static string FormatDate(string? date)
+        => string.IsNullOrWhiteSpace(date) ? "—" : date;
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+        {
+            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+        }
+
+        return $"{duration.Minutes}m";
+    }
+
+    private static string FormatDistanceKm(double totalDistanceMeters)
+        => $"{totalDistanceMeters / 1000.0:0.0} km";
+
+    private static int? GetPreferredMaxAltitude(FlightStats stats)
+        => stats.AltBaroMax ?? stats.AltGpsMax;
+
+    private static int? GetPreferredMinAltitude(FlightStats stats)
+        => stats.AltBaroMin ?? stats.AltGpsMin;
+
+    private static string FormatElavationMax(FlightStats stats)
+    {
+        var value = GetPreferredMaxAltitude(stats);
+        return value.HasValue ? $"{value.Value} m" : "—";
+    }
+
+    private static string FormatElavationMin(FlightStats stats)
+    {
+        var value = GetPreferredMinAltitude(stats);
+        return value.HasValue ? $"{value.Value} m" : "—";
+    }
+
+    private static string FormatMaxClimb(double? value)
+        => value.HasValue ? $"{value.Value:+0.0;-0.0;0.0} m/s" : "—";
+
+    private static string FormatMinClimb(double? value)
+        => value.HasValue ? $"{value.Value:+0.0;-0.0;0.0} m/s" : "—";
+
+    private static string FormatStartTime(DateTime? time)
+    {
+        if (!time.HasValue)
+            return "—";
+
+        return time.Value.ToLocalTime().ToString("HH:mm");
     }
 }

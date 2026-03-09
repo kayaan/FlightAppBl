@@ -1,0 +1,10 @@
+netstat -ano | findstr :5084
+
+
+taskkill /PID DEINE_PID /F
+
+taskkill /PID 12345 /F
+
+Get-NetTCPConnection -LocalPort 5084 | Select-Object LocalAddress,LocalPort,State,OwningProcess
+Get-Process -Id DEINE_PID
+Stop-Process -Id DEINE_PID -Force
