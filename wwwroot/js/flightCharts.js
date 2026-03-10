@@ -49,8 +49,8 @@ window.flightCharts = (function () {
 
         const decimals =
             unit === "m" ? 0 :
-            unit === "km/h" ? 0 :
-            1;
+                unit === "km/h" ? 0 :
+                    1;
 
         return `${Number(value).toFixed(decimals).replace(".", ",")} ${unit}`;
     }
