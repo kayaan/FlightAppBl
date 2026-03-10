@@ -2,12 +2,12 @@ window.flightCharts = (function () {
     const instances = {};
     const chartGroup = "flight-charts-sync-group";
 
-    let hoverThrottleMs = 100;
+    let hoverThrottleMs = 25;
     let lastHoverUpdateMs = 0;
+    let lastTrackIndex = -1;
 
-    let mapTrackTimeSec = null;
-    let mapTrackLat = null;
-    let mapTrackLon = null;
+    let mapTrackLatE7 = null;
+    let mapTrackLonE7 = null;
     let mapCursorMarker = null;
 
     function ensureChart(elementId) {
@@ -21,24 +21,10 @@ window.flightCharts = (function () {
         chart.group = chartGroup;
         echarts.connect(chartGroup);
 
-        chart.on("updateAxisPointer", function (event) {
-            const now = Date.now();
-            if (now - lastHoverUpdateMs < hoverThrottleMs) return;
-
-            const xInfo = event.axesInfo?.[0];
-            if (!xInfo) return;
-
-            const timeSec = Number(xInfo.value);
-            if (Number.isNaN(timeSec)) return;
-
-            lastHoverUpdateMs = now;
-            moveMapCursorToTime(timeSec);
-        });
-
         instances[elementId] = chart;
         return chart;
     }
-    
+
     function dispose(elementId) {
         const chart = instances[elementId];
         if (!chart) return;
@@ -90,71 +76,32 @@ window.flightCharts = (function () {
         return Math.ceil(maxSeconds / interval) * interval;
     }
 
-    function getTargetPointCount(chart) {
-        const width = Math.max(200, chart.getWidth ? chart.getWidth() : 800);
-        return Math.max(500, Math.floor(width * 2));
-    }
-
-    function buildSeriesData(xValues, yValues, targetPointCount) {
+    function buildSeriesData(xValues, yValues) {
         if (!xValues || !yValues) return [];
 
         const count = Math.min(xValues.length, yValues.length);
         if (count < 2) return [];
 
-        const step = Math.max(1, Math.ceil(count / targetPointCount));
+        const result = new Array(count);
 
-        if (step === 1) {
-            const result = new Array(count);
-            for (let i = 0; i < count; i++) {
-                result[i] = [xValues[i], yValues[i]];
-            }
-            return result;
+        for (let i = 0; i < count; i++) {
+            result[i] = [xValues[i], yValues[i], i];
         }
 
-        const reduced = [];
-        for (let i = 0; i < count; i += step) {
-            reduced.push([xValues[i], yValues[i]]);
-        }
-
-        const lastIndex = count - 1;
-        const last = reduced[reduced.length - 1];
-        if (!last || last[0] !== xValues[lastIndex]) {
-            reduced.push([xValues[lastIndex], yValues[lastIndex]]);
-        }
-
-        return reduced;
+        return result;
     }
 
-
-    function registerMapCursor(trackTimeSec, trackLatE7, trackLonE7, marker) {
-        mapTrackTimeSec = trackTimeSec;
+    function registerMapCursor(trackLatE7, trackLonE7, marker) {
         mapTrackLatE7 = trackLatE7;
         mapTrackLonE7 = trackLonE7;
         mapCursorMarker = marker;
+        lastTrackIndex = -1;
     }
 
-    function findNearestTrackIndexByTime(timeSec) {
-        if (!mapTrackTimeSec || mapTrackTimeSec.length === 0) return -1;
-
-        let bestIndex = 0;
-        let bestDiff = Math.abs(mapTrackTimeSec[0] - timeSec);
-
-        for (let i = 1; i < mapTrackTimeSec.length; i++) {
-            const diff = Math.abs(mapTrackTimeSec[i] - timeSec);
-            if (diff < bestDiff) {
-                bestDiff = diff;
-                bestIndex = i;
-            }
-        }
-
-        return bestIndex;
-    }
-
-    function moveMapCursorToTime(timeSec) {
+    function moveMapCursorToTrackIndex(trackIndex) {
         if (!mapCursorMarker || !mapTrackLatE7 || !mapTrackLonE7) return;
-
-        const trackIndex = findNearestTrackIndexByTime(timeSec);
-        if (trackIndex < 0) return;
+        if (trackIndex == null || trackIndex < 0) return;
+        if (trackIndex >= mapTrackLatE7.length || trackIndex >= mapTrackLonE7.length) return;
 
         const lat = mapTrackLatE7[trackIndex] / 1e7;
         const lon = mapTrackLonE7[trackIndex] / 1e7;
@@ -200,14 +147,32 @@ window.flightCharts = (function () {
                         show: false
                     }
                 },
-
                 formatter: function (params) {
-
                     if (!params || params.length === 0) return "";
 
+                    const now = Date.now();
                     const p = params[0];
-                    const y = Array.isArray(p.value) ? p.value[1] : null;
 
+                    let trackIndex = null;
+
+                    if (Array.isArray(p.value) && p.value.length >= 3) {
+                        trackIndex = p.value[2];
+                    } else if (typeof p.dataIndex === "number") {
+                        trackIndex = p.dataIndex;
+                    }
+
+                    if (
+                        trackIndex != null &&
+                        !Number.isNaN(trackIndex) &&
+                        trackIndex !== lastTrackIndex &&
+                        now - lastHoverUpdateMs >= hoverThrottleMs
+                    ) {
+                        lastHoverUpdateMs = now;
+                        lastTrackIndex = trackIndex;
+                        moveMapCursorToTrackIndex(trackIndex);
+                    }
+
+                    const y = Array.isArray(p.value) ? p.value[1] : null;
                     return formatValue(y, unit);
                 }
             },
@@ -240,7 +205,7 @@ window.flightCharts = (function () {
                     color: "#64748b"
                 },
                 axisPointer: {
-                    show: false,
+                    show: false
                 },
                 splitLine: {
                     lineStyle: {
@@ -268,7 +233,9 @@ window.flightCharts = (function () {
                     },
                     data: series,
                     lineStyle: extra.lineStyle,
-                    areaStyle: extra.areaStyle ?? undefined
+                    areaStyle: extra.areaStyle ?? undefined,
+                    progressive: 5000,
+                    progressiveThreshold: 10000
                 }
             ]
         };
@@ -284,8 +251,7 @@ window.flightCharts = (function () {
         const chart = ensureChart(elementId);
         if (!chart || !xValues || !yValues) return;
 
-        const targetPointCount = getTargetPointCount(chart);
-        const series = buildSeriesData(xValues, yValues, targetPointCount);
+        const series = buildSeriesData(xValues, yValues);
 
         chart.setOption(baseOption(title, unit, series, extra), true);
         requestAnimationFrame(() => chart.resize());

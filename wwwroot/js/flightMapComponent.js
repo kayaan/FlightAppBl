@@ -75,7 +75,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         return latLngs;
     }
 
-    function renderTrackArrays(elementId, timeSec, latE7, lonE7) {
+    function renderTrackArrays(elementId, latE7, lonE7) {
         const instance = ensureMap(elementId);
         if (!instance) return;
 
@@ -119,7 +119,6 @@ window.flightMapComponent = window.flightMapComponent || (function () {
 
         if (window.flightCharts?.registerMapCursor) {
             window.flightCharts.registerMapCursor(
-                timeSec,
                 latE7,
                 lonE7,
                 instance.cursorMarker
