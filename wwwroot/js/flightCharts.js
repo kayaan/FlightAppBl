@@ -34,6 +34,20 @@ window.flightCharts = window.flightCharts || (function () {
         return `${m}:${String(s).padStart(2, "0")}`;
     }
 
+    function buildSeriesData(xValues, yValues) {
+        if (!xValues || !yValues) return [];
+
+        const count = Math.min(xValues.length, yValues.length);
+        if (count < 2) return [];
+
+        const result = new Array(count);
+        for (let i = 0; i < count; i++) {
+            result[i] = [xValues[i], yValues[i]];
+        }
+
+        return result;
+    }
+
     function baseOption(title, unit, series, extra) {
         const option = {
             animation: false,
@@ -83,8 +97,7 @@ window.flightCharts = window.flightCharts || (function () {
             yAxis: {
                 type: "value",
                 axisLabel: {
-                    color: "#64748b",
-                    formatter: value => `${value}`
+                    color: "#64748b"
                 },
                 splitLine: {
                     lineStyle: {
@@ -119,10 +132,11 @@ window.flightCharts = window.flightCharts || (function () {
         return option;
     }
 
-    function renderOne(elementId, title, unit, series, extra) {
+    function renderOne(elementId, title, unit, xValues, yValues, extra) {
         const chart = ensureChart(elementId);
         if (!chart) return;
 
+        const series = buildSeriesData(xValues, yValues);
         chart.setOption(baseOption(title, unit, series, extra), true);
         requestAnimationFrame(() => chart.resize());
     }
@@ -132,7 +146,8 @@ window.flightCharts = window.flightCharts || (function () {
             altId,
             payload.altitudeTitle,
             payload.altitudeUnit,
-            payload.altitudeSeries,
+            payload.timeSec,
+            payload.altitudeValues,
             {
                 lineStyle: { width: 2, color: "#2563eb" },
                 areaStyle: { opacity: 0.08 }
@@ -143,7 +158,8 @@ window.flightCharts = window.flightCharts || (function () {
             varioId,
             payload.varioTitle,
             payload.varioUnit,
-            payload.varioSeries,
+            payload.timeSec,
+            payload.varioValues,
             {
                 lineStyle: { width: 2, color: "#7c3aed" },
                 markLine: {
@@ -163,7 +179,8 @@ window.flightCharts = window.flightCharts || (function () {
             speedId,
             payload.speedTitle,
             payload.speedUnit,
-            payload.speedSeries,
+            payload.timeSec,
+            payload.speedValues,
             {
                 lineStyle: { width: 2, color: "#ea580c" }
             }

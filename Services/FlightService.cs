@@ -42,6 +42,53 @@ public class FlightService
         if (binary is null)
             return null;
 
-        return _trackBinarySerializer.Deserialize(binary);
+        var track = _trackBinarySerializer.Deserialize(binary);
+        if (track is null)
+            return null;
+
+        // todo remove later
+        const int repeatCount = 1;
+
+        return RepeatTrack(track, repeatCount);
+    }
+
+    private static TrackArrays RepeatTrack(TrackArrays source, int repeatCount)
+    {
+        if (repeatCount <= 1)
+            return source;
+
+        return new TrackArrays
+        {
+            TDeltaMs = RepeatArray(source.TDeltaMs, repeatCount),
+            LatE7 = RepeatArray(source.LatE7, repeatCount),
+            LonE7 = RepeatArray(source.LonE7, repeatCount),
+            AltBaroCm = RepeatNullableArray(source.AltBaroCm, repeatCount),
+            AltGpsCm = RepeatNullableArray(source.AltGpsCm, repeatCount),
+            VarioCms = RepeatNullableArray(source.VarioCms, repeatCount),
+            SpeedCms = RepeatNullableArray(source.SpeedCms, repeatCount)
+        };
+    }
+
+    private static int[] RepeatArray(int[] source, int repeatCount)
+    {
+        if (source.Length == 0 || repeatCount <= 1)
+            return source;
+
+        var result = new int[source.Length * repeatCount];
+
+        for (var r = 0; r < repeatCount; r++)
+        {
+            Array.Copy(source, 0, result, r * source.Length, source.Length);
+        }
+
+        return result;
+    }
+
+    private static int[]? RepeatNullableArray(int[]? source, int repeatCount)
+    {
+        if (source is null)
+            return null;
+
+        return RepeatArray(source, repeatCount);
     }
 }

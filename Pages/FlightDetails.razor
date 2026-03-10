@@ -98,11 +98,8 @@
                 <FlightCharts Track="trackArrays" />
             </div>
 
-            <div class="splitter @(isResizing ? "splitter-active" : null)"
-                 @onmousedown="StartResize"
-                 @onmousedown:preventDefault="true"
-                 aria-label="Resize panels"
-                 role="separator">
+            <div class="splitter @(isResizing ? "splitter-active" : null)"                 @onmousedown="StartResize"
+                 @onmousedown:preventDefault="true"                 aria-label="Resize panels"                 role="separator">
             </div>
 
             <div class="right-pane">
@@ -184,17 +181,22 @@
     }
 
     [JSInvokable]
-    public Task OnResizeDrag(double clientX)
+    public async Task OnResizeDrag(double clientX)
     {
         if (layoutWidth <= 0)
-            return Task.CompletedTask;
+            return;
 
         var relativeX = clientX - layoutLeft;
         var newPercent = (int)Math.Round(relativeX / layoutWidth * 100.0);
 
-        leftPanePercent = Math.Clamp(newPercent, 30, 75);
+        var clamped = Math.Clamp(newPercent, 30, 75);
+        if (clamped == leftPanePercent)
+            return;
 
-        return InvokeAsync(StateHasChanged);
+        leftPanePercent = clamped;
+
+        await InvokeAsync(StateHasChanged);
+        await JS.InvokeVoidAsync("flightDetails.notifyResize");
     }
 
     [JSInvokable]

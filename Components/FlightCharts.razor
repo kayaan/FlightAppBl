@@ -55,6 +55,7 @@
     }
 </style>
 
+
 @code {
     [Parameter]
     public TrackArrays? Track { get; set; }
@@ -128,36 +129,56 @@
         if (Track?.TDeltaMs is not { Length: > 1 } tDeltaMs)
             return null;
 
-        var count = tDeltaMs.Length;
-
-        double totalMs = 0;
-        var timeSec = new double[count];
-
-        for (var i = 0; i < count; i++)
-        {
-            totalMs += tDeltaMs[i];
-            timeSec[i] = totalMs / 1000.0;
-        }
-
-        var altitudeCm = SelectAltitudeSource();
-        var altitude = BuildSeries(timeSec, altitudeCm, v => v / 100.0);
-        var vario = BuildSeries(timeSec, Track.VarioCms, v => v / 100.0);
-        var speed = BuildSeries(timeSec, Track.SpeedCms, v => v * 0.036);
+        var timeSec = BuildTimeSeconds(tDeltaMs);
+        var altitudeValues = BuildScaledSeries(SelectAltitudeSource(), 0.01);
+        var varioValues = BuildScaledSeries(Track.VarioCms, 0.01);
+        var speedValues = BuildScaledSeries(Track.SpeedCms, 0.036);
 
         return new
         {
+            timeSec,
+
             altitudeTitle = "Altitude",
-            varioTitle = "Vario",
-            speedTitle = "Speed",
-
             altitudeUnit = "m",
-            varioUnit = "m/s",
-            speedUnit = "km/h",
+            altitudeValues,
 
-            altitudeSeries = altitude,
-            varioSeries = vario,
-            speedSeries = speed
+            varioTitle = "Vario",
+            varioUnit = "m/s",
+            varioValues,
+
+            speedTitle = "Speed",
+            speedUnit = "km/h",
+            speedValues
         };
+    }
+
+    private static double[] BuildTimeSeconds(int[] tDeltaMs)
+    {
+        var count = tDeltaMs.Length;
+        var result = new double[count];
+
+        double totalMs = 0;
+        for (var i = 0; i < count; i++)
+        {
+            totalMs += tDeltaMs[i];
+            result[i] = totalMs / 1000.0;
+        }
+
+        return result;
+    }
+
+    private static double[]? BuildScaledSeries(int[]? source, double scale)
+    {
+        if (source is null || source.Length == 0)
+            return null;
+
+        var result = new double[source.Length];
+        for (var i = 0; i < source.Length; i++)
+        {
+            result[i] = source[i] * scale;
+        }
+
+        return result;
     }
 
     private int[]? SelectAltitudeSource()
@@ -169,29 +190,6 @@
             return Track.AltGpsCm;
 
         return null;
-    }
-
-    private static List<double[]> BuildSeries(double[] timeSec, int[]? values, Func<int, double> selector)
-    {
-        var result = new List<double[]>();
-
-        if (values is null || values.Length == 0)
-            return result;
-
-        var count = Math.Min(timeSec.Length, values.Length);
-        if (count < 2)
-            return result;
-
-        for (var i = 0; i < count; i++)
-        {
-            result.Add(new[]
-            {
-                timeSec[i],
-                selector(values[i])
-            });
-        }
-
-        return result;
     }
 
     private string BuildSignature()
