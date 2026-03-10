@@ -1,4 +1,4 @@
-window.flightCharts = window.flightCharts || (function () {
+window.flightCharts = (function () {
     const instances = {};
 
     function ensureChart(elementId) {
@@ -34,18 +34,43 @@ window.flightCharts = window.flightCharts || (function () {
         return `${m}:${String(s).padStart(2, "0")}`;
     }
 
-    function buildSeriesData(xValues, yValues) {
+    function getTargetPointCount(chart) {
+        const width = Math.max(200, chart.getWidth ? chart.getWidth() : 800);
+
+        // ca. 2 Punkte pro Pixelbreite als pragmatischer Zielwert
+        return Math.max(500, Math.floor(width * 2));
+    }
+
+    function buildSeriesData(xValues, yValues, targetPointCount) {
         if (!xValues || !yValues) return [];
 
         const count = Math.min(xValues.length, yValues.length);
         if (count < 2) return [];
 
-        const result = new Array(count);
-        for (let i = 0; i < count; i++) {
-            result[i] = [xValues[i], yValues[i]];
+        const step = Math.max(1, Math.ceil(count / targetPointCount));
+
+        // keine Ausdünnung nötig
+        if (step === 1) {
+            const result = new Array(count);
+            for (let i = 0; i < count; i++) {
+                result[i] = [xValues[i], yValues[i]];
+            }
+            return result;
         }
 
-        return result;
+        const reduced = [];
+        for (let i = 0; i < count; i += step) {
+            reduced.push([xValues[i], yValues[i]]);
+        }
+
+        // letzten Punkt sicher mitnehmen
+        const lastIndex = count - 1;
+        const last = reduced[reduced.length - 1];
+        if (!last || last[0] !== xValues[lastIndex]) {
+            reduced.push([xValues[lastIndex], yValues[lastIndex]]);
+        }
+
+        return reduced;
     }
 
     function baseOption(title, unit, series, extra) {
@@ -134,9 +159,11 @@ window.flightCharts = window.flightCharts || (function () {
 
     function renderOne(elementId, title, unit, xValues, yValues, extra) {
         const chart = ensureChart(elementId);
-        if (!chart) return;
+        if (!chart || !xValues || !yValues) return;
 
-        const series = buildSeriesData(xValues, yValues);
+        const targetPointCount = getTargetPointCount(chart);
+        const series = buildSeriesData(xValues, yValues, targetPointCount);
+
         chart.setOption(baseOption(title, unit, series, extra), true);
         requestAnimationFrame(() => chart.resize());
     }

@@ -22,40 +22,6 @@
     }
 </div>
 
-<style>
-    .flight-charts-root {
-        display: grid;
-        grid-template-rows: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        min-width: 0;
-        min-height: 0;
-        height: 100%;
-    }
-
-    .chart-panel {
-        min-width: 0;
-        min-height: 0;
-        height: 100%;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        background: #fff;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-        overflow: hidden;
-    }
-
-    .flight-charts-empty {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 300px;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        background: #fff;
-        color: #94a3b8;
-    }
-</style>
-
-
 @code {
     [Parameter]
     public TrackArrays? Track { get; set; }
