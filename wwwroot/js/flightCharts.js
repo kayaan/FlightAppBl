@@ -10,6 +10,9 @@ window.flightCharts = (function () {
     let mapTrackLonE7 = null;
     let mapCursorMarker = null;
 
+    let suppressChartToMap = false;
+    let suppressMapToChart = false;
+
     function ensureChart(elementId) {
         const el = document.getElementById(elementId);
         if (!el) return null;
@@ -58,8 +61,8 @@ window.flightCharts = (function () {
 
         const decimals =
             unit === "m" ? 0 :
-                unit === "km/h" ? 0 :
-                    1;
+            unit === "km/h" ? 0 :
+            1;
 
         return `${Number(value).toFixed(decimals).replace(".", ",")} ${unit}`;
     }
@@ -107,6 +110,46 @@ window.flightCharts = (function () {
         const lon = mapTrackLonE7[trackIndex] / 1e7;
 
         mapCursorMarker.setLatLng([lat, lon]);
+    }
+
+    function showCursorAtTrackIndex(trackIndex) {
+        if (trackIndex == null || trackIndex < 0) return;
+
+        suppressMapToChart = true;
+
+        try {
+            Object.values(instances).forEach(chart => {
+                if (!chart) return;
+
+                chart.dispatchAction({
+                    type: "showTip",
+                    seriesIndex: 0,
+                    dataIndex: trackIndex
+                });
+            });
+
+            lastTrackIndex = trackIndex;
+        } finally {
+            suppressMapToChart = false;
+        }
+    }
+
+    function hideCursor() {
+        suppressMapToChart = true;
+
+        try {
+            Object.values(instances).forEach(chart => {
+                if (!chart) return;
+
+                chart.dispatchAction({
+                    type: "hideTip"
+                });
+            });
+
+            lastTrackIndex = -1;
+        } finally {
+            suppressMapToChart = false;
+        }
     }
 
     function baseOption(title, unit, series, extra) {
@@ -162,6 +205,7 @@ window.flightCharts = (function () {
                     }
 
                     if (
+                        !suppressMapToChart &&
                         trackIndex != null &&
                         !Number.isNaN(trackIndex) &&
                         trackIndex !== lastTrackIndex &&
@@ -169,7 +213,13 @@ window.flightCharts = (function () {
                     ) {
                         lastHoverUpdateMs = now;
                         lastTrackIndex = trackIndex;
-                        moveMapCursorToTrackIndex(trackIndex);
+
+                        suppressChartToMap = true;
+                        try {
+                            moveMapCursorToTrackIndex(trackIndex);
+                        } finally {
+                            suppressChartToMap = false;
+                        }
                     }
 
                     const y = Array.isArray(p.value) ? p.value[1] : null;
@@ -305,6 +355,10 @@ window.flightCharts = (function () {
         echarts.connect(chartGroup);
     }
 
+    function isSuppressChartToMap() {
+        return suppressChartToMap;
+    }
+
     window.addEventListener("resize", () => {
         Object.values(instances).forEach(chart => chart.resize());
     });
@@ -312,6 +366,9 @@ window.flightCharts = (function () {
     return {
         renderAll,
         dispose,
-        registerMapCursor
+        registerMapCursor,
+        showCursorAtTrackIndex,
+        hideCursor,
+        isSuppressChartToMap
     };
 })();
