@@ -2,6 +2,14 @@ window.flightCharts = (function () {
     const instances = {};
     const chartGroup = "flight-charts-sync-group";
 
+    let hoverThrottleMs = 100;
+    let lastHoverUpdateMs = 0;
+
+    let mapTrackTimeSec = null;
+    let mapTrackLat = null;
+    let mapTrackLon = null;
+    let mapCursorMarker = null;
+
     function ensureChart(elementId) {
         const el = document.getElementById(elementId);
         if (!el) return null;
@@ -13,10 +21,24 @@ window.flightCharts = (function () {
         chart.group = chartGroup;
         echarts.connect(chartGroup);
 
+        chart.on("updateAxisPointer", function (event) {
+            const now = Date.now();
+            if (now - lastHoverUpdateMs < hoverThrottleMs) return;
+
+            const xInfo = event.axesInfo?.[0];
+            if (!xInfo) return;
+
+            const timeSec = Number(xInfo.value);
+            if (Number.isNaN(timeSec)) return;
+
+            lastHoverUpdateMs = now;
+            moveMapCursorToTime(timeSec);
+        });
+
         instances[elementId] = chart;
         return chart;
     }
-
+    
     function dispose(elementId) {
         const chart = instances[elementId];
         if (!chart) return;
@@ -101,6 +123,43 @@ window.flightCharts = (function () {
         }
 
         return reduced;
+    }
+
+
+    function registerMapCursor(trackTimeSec, trackLatE7, trackLonE7, marker) {
+        mapTrackTimeSec = trackTimeSec;
+        mapTrackLatE7 = trackLatE7;
+        mapTrackLonE7 = trackLonE7;
+        mapCursorMarker = marker;
+    }
+
+    function findNearestTrackIndexByTime(timeSec) {
+        if (!mapTrackTimeSec || mapTrackTimeSec.length === 0) return -1;
+
+        let bestIndex = 0;
+        let bestDiff = Math.abs(mapTrackTimeSec[0] - timeSec);
+
+        for (let i = 1; i < mapTrackTimeSec.length; i++) {
+            const diff = Math.abs(mapTrackTimeSec[i] - timeSec);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+    }
+
+    function moveMapCursorToTime(timeSec) {
+        if (!mapCursorMarker || !mapTrackLatE7 || !mapTrackLonE7) return;
+
+        const trackIndex = findNearestTrackIndexByTime(timeSec);
+        if (trackIndex < 0) return;
+
+        const lat = mapTrackLatE7[trackIndex] / 1e7;
+        const lon = mapTrackLonE7[trackIndex] / 1e7;
+
+        mapCursorMarker.setLatLng([lat, lon]);
     }
 
     function baseOption(title, unit, series, extra) {
@@ -286,6 +345,7 @@ window.flightCharts = (function () {
 
     return {
         renderAll,
-        dispose
+        dispose,
+        registerMapCursor
     };
 })();

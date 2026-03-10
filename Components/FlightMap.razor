@@ -55,13 +55,34 @@
         if (signature == lastRenderSignature)
             return;
 
+        var timeSec = BuildTimeSec();
+
         await JS.InvokeVoidAsync(
             "flightMapComponent.renderTrackArrays",
             mapId,
+            timeSec,
             Track!.LatE7,
             Track.LonE7);
 
         lastRenderSignature = signature;
+    }
+
+    private double[] BuildTimeSec()
+    {
+        var deltas = Track?.TDeltaMs;
+        if (deltas is null || deltas.Length == 0)
+            return Array.Empty<double>();
+
+        var result = new double[deltas.Length];
+        long sumMs = 0;
+
+        for (int i = 0; i < deltas.Length; i++)
+        {
+            sumMs += deltas[i];
+            result[i] = sumMs / 1000.0;
+        }
+
+        return result;
     }
 
     public async ValueTask DisposeAsync()

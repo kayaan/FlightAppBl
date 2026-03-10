@@ -22,7 +22,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             map,
             trackLayer: null,
             startMarker: null,
-            endMarker: null
+            endMarker: null,
+            cursorMarker: null
         };
 
         instances[elementId] = instance;
@@ -47,6 +48,11 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             instance.map.removeLayer(instance.endMarker);
             instance.endMarker = null;
         }
+
+        if (instance.cursorMarker) {
+            instance.map.removeLayer(instance.cursorMarker);
+            instance.cursorMarker = null;
+        }
     }
 
     function buildLatLngs(latE7, lonE7) {
@@ -69,7 +75,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         return latLngs;
     }
 
-    function renderTrackArrays(elementId, latE7, lonE7) {
+    function renderTrackArrays(elementId, timeSec, latE7, lonE7) {
         const instance = ensureMap(elementId);
         if (!instance) return;
 
@@ -102,6 +108,23 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         })
             .addTo(instance.map)
             .bindTooltip("Landing");
+
+        instance.cursorMarker = L.circleMarker(latLngs[0], {
+            radius: 5,
+            color: "#0f172a",
+            fillColor: "#f59e0b",
+            fillOpacity: 1,
+            weight: 2
+        }).addTo(instance.map);
+
+        if (window.flightCharts?.registerMapCursor) {
+            window.flightCharts.registerMapCursor(
+                timeSec,
+                latE7,
+                lonE7,
+                instance.cursorMarker
+            );
+        }
 
         instance.map.fitBounds(instance.trackLayer.getBounds(), {
             padding: [20, 20]
