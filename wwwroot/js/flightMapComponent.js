@@ -37,6 +37,9 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         const instance = instances[elementId];
         if (!instance) return;
 
+        instance.map.off("mousemove");
+        instance.map.off("mouseout");
+
         if (instance.trackLayer) {
             instance.map.removeLayer(instance.trackLayer);
             instance.trackLayer = null;
@@ -56,6 +59,10 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             instance.map.removeLayer(instance.cursorMarker);
             instance.cursorMarker = null;
         }
+
+        instance.latE7 = null;
+        instance.lonE7 = null;
+        instance.lastHoverTrackIndex = -1;
     }
 
     function buildLatLngs(latE7, lonE7) {
@@ -76,6 +83,32 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         }
 
         return latLngs;
+    }
+
+    function findNearestTrackIndex(latE7, lonE7, lat, lng) {
+        if (!latE7 || !lonE7) return -1;
+
+        const count = Math.min(latE7.length, lonE7.length);
+        if (count === 0) return -1;
+
+        const targetLatE7 = Math.round(lat * 1e7);
+        const targetLngE7 = Math.round(lng * 1e7);
+
+        let bestIndex = 0;
+        let bestDist = Number.POSITIVE_INFINITY;
+
+        for (let i = 0; i < count; i++) {
+            const dLat = latE7[i] - targetLatE7;
+            const dLng = lonE7[i] - targetLngE7;
+            const dist = dLat * dLat + dLng * dLng;
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
     }
 
     function renderTrackArrays(elementId, latE7, lonE7) {
@@ -120,7 +153,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             radius: 5,
             color: "#0f172a",
             fillColor: "#f59e0b",
-            fillOpacity: 1,
+            fillOpacity: 0,
+            opacity: 0,
             weight: 2
         }).addTo(instance.map);
 
@@ -146,6 +180,11 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             const lon = instance.lonE7[trackIndex] / 1e7;
 
             if (instance.cursorMarker) {
+                instance.cursorMarker.setStyle({
+                    opacity: 1,
+                    fillOpacity: 1
+                });
+
                 instance.cursorMarker.setLatLng([lat, lon]);
             }
 
@@ -157,8 +196,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         instance.map.on("mouseout", function () {
             instance.lastHoverTrackIndex = -1;
 
-            if (window.flightCharts?.hideCursor) {
-                window.flightCharts.hideCursor();
+            if (window.flightCharts?.clearCursor) {
+                window.flightCharts.clearCursor();
             }
         });
 
@@ -177,32 +216,6 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         setTimeout(() => {
             instance.map.invalidateSize();
         }, 0);
-    }
-
-    function findNearestTrackIndex(latE7, lonE7, lat, lng) {
-        if (!latE7 || !lonE7) return -1;
-
-        const count = Math.min(latE7.length, lonE7.length);
-        if (count === 0) return -1;
-
-        const targetLatE7 = Math.round(lat * 1e7);
-        const targetLngE7 = Math.round(lng * 1e7);
-
-        let bestIndex = 0;
-        let bestDist = Number.POSITIVE_INFINITY;
-
-        for (let i = 0; i < count; i++) {
-            const dLat = latE7[i] - targetLatE7;
-            const dLng = lonE7[i] - targetLngE7;
-            const dist = dLat * dLat + dLng * dLng;
-
-            if (dist < bestDist) {
-                bestDist = dist;
-                bestIndex = i;
-            }
-        }
-
-        return bestIndex;
     }
 
     function dispose(elementId) {

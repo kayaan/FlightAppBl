@@ -24,6 +24,10 @@ window.flightCharts = (function () {
         chart.group = chartGroup;
         echarts.connect(chartGroup);
 
+        chart.getZr().on("globalout", function () {
+            clearCursor();
+        });
+
         instances[elementId] = chart;
         return chart;
     }
@@ -99,6 +103,13 @@ window.flightCharts = (function () {
         mapTrackLonE7 = trackLonE7;
         mapCursorMarker = marker;
         lastTrackIndex = -1;
+
+        if (mapCursorMarker) {
+            mapCursorMarker.setStyle({
+                opacity: 0,
+                fillOpacity: 0
+            });
+        }
     }
 
     function moveMapCursorToTrackIndex(trackIndex) {
@@ -108,6 +119,11 @@ window.flightCharts = (function () {
 
         const lat = mapTrackLatE7[trackIndex] / 1e7;
         const lon = mapTrackLonE7[trackIndex] / 1e7;
+
+        mapCursorMarker.setStyle({
+            opacity: 1,
+            fillOpacity: 1
+        });
 
         mapCursorMarker.setLatLng([lat, lon]);
     }
@@ -135,6 +151,10 @@ window.flightCharts = (function () {
     }
 
     function hideCursor() {
+        clearCursor();
+    }
+
+    function clearCursor() {
         suppressMapToChart = true;
 
         try {
@@ -147,6 +167,13 @@ window.flightCharts = (function () {
             });
 
             lastTrackIndex = -1;
+
+            if (mapCursorMarker) {
+                mapCursorMarker.setStyle({
+                    opacity: 0,
+                    fillOpacity: 0
+                });
+            }
         } finally {
             suppressMapToChart = false;
         }
@@ -369,6 +396,7 @@ window.flightCharts = (function () {
         registerMapCursor,
         showCursorAtTrackIndex,
         hideCursor,
+        clearCursor,
         isSuppressChartToMap
     };
 })();
