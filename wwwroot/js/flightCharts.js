@@ -1,5 +1,6 @@
 window.flightCharts = (function () {
     const instances = {};
+    const chartGroup = "flight-charts-sync-group";
 
     function ensureChart(elementId) {
         const el = document.getElementById(elementId);
@@ -9,6 +10,9 @@ window.flightCharts = (function () {
         if (chart) return chart;
 
         chart = echarts.init(el, null, { renderer: "canvas" });
+        chart.group = chartGroup;
+        echarts.connect(chartGroup);
+
         instances[elementId] = chart;
         return chart;
     }
@@ -34,10 +38,38 @@ window.flightCharts = (function () {
         return `${m}:${String(s).padStart(2, "0")}`;
     }
 
+    function formatAxisTime(seconds) {
+        const total = Math.max(0, Math.floor(seconds));
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        return `${h}:${String(m).padStart(2, "0")}`;
+    }
+
+    function formatValue(value, unit) {
+        if (value == null || Number.isNaN(value)) return `— ${unit}`;
+
+        const decimals =
+            unit === "m" ? 0 :
+            unit === "km/h" ? 0 :
+            1;
+
+        return `${Number(value).toFixed(decimals).replace(".", ",")} ${unit}`;
+    }
+
+    function getFlightAxisInterval(maxSeconds) {
+        if (maxSeconds <= 60 * 60) return 5 * 60;
+        if (maxSeconds <= 3 * 60 * 60) return 10 * 60;
+        if (maxSeconds <= 6 * 60 * 60) return 15 * 60;
+        return 30 * 60;
+    }
+
+    function getRoundedAxisMax(maxSeconds, interval) {
+        if (!maxSeconds || maxSeconds <= 0) return interval;
+        return Math.ceil(maxSeconds / interval) * interval;
+    }
+
     function getTargetPointCount(chart) {
         const width = Math.max(200, chart.getWidth ? chart.getWidth() : 800);
-
-        // ca. 2 Punkte pro Pixelbreite als pragmatischer Zielwert
         return Math.max(500, Math.floor(width * 2));
     }
 
@@ -49,7 +81,6 @@ window.flightCharts = (function () {
 
         const step = Math.max(1, Math.ceil(count / targetPointCount));
 
-        // keine Ausdünnung nötig
         if (step === 1) {
             const result = new Array(count);
             for (let i = 0; i < count; i++) {
@@ -63,7 +94,6 @@ window.flightCharts = (function () {
             reduced.push([xValues[i], yValues[i]]);
         }
 
-        // letzten Punkt sicher mitnehmen
         const lastIndex = count - 1;
         const last = reduced[reduced.length - 1];
         if (!last || last[0] !== xValues[lastIndex]) {
@@ -74,8 +104,15 @@ window.flightCharts = (function () {
     }
 
     function baseOption(title, unit, series, extra) {
+        const maxX = series.length > 0 ? series[series.length - 1][0] : 0;
+        const axisInterval = getFlightAxisInterval(maxX);
+        const axisMax = getRoundedAxisMax(maxX, axisInterval);
+
         const option = {
             animation: false,
+            axisPointer: {
+                link: [{ xAxisIndex: "all" }]
+            },
             grid: {
                 left: 52,
                 right: 14,
@@ -97,23 +134,38 @@ window.flightCharts = (function () {
                 confine: true,
                 axisPointer: {
                     type: "line",
-                    snap: true
+                    snap: true,
+                    label: {
+                        show: true
+                    }
                 },
                 formatter: function (params) {
                     if (!params || params.length === 0) return "";
 
                     const p = params[0];
-                    const x = Array.isArray(p.value) ? p.value[0] : null;
                     const y = Array.isArray(p.value) ? p.value[1] : null;
 
-                    return `${formatTime(x)}<br/>${y?.toFixed(1) ?? "—"} ${unit}`;
+                    return formatValue(y, unit);
                 }
             },
             xAxis: {
                 type: "value",
+                min: 0,
+                max: axisMax,
+                interval: axisInterval,
                 axisLabel: {
                     color: "#94a3b8",
-                    formatter: value => formatTime(value)
+                    formatter: value => formatAxisTime(value)
+                },
+                axisPointer: {
+                    show: true,
+                    snap: true,
+                    label: {
+                        show: true,
+                        formatter: function (params) {
+                            return formatTime(params.value);
+                        }
+                    }
                 },
                 splitLine: {
                     show: false
@@ -123,6 +175,15 @@ window.flightCharts = (function () {
                 type: "value",
                 axisLabel: {
                     color: "#64748b"
+                },
+                axisPointer: {
+                    show: true,
+                    label: {
+                        show: true,
+                        formatter: function (params) {
+                            return formatValue(params.value, unit);
+                        }
+                    }
                 },
                 splitLine: {
                     lineStyle: {
@@ -212,6 +273,8 @@ window.flightCharts = (function () {
                 lineStyle: { width: 2, color: "#ea580c" }
             }
         );
+
+        echarts.connect(chartGroup);
     }
 
     window.addEventListener("resize", () => {
