@@ -11,6 +11,7 @@ window.flightCharts = (function () {
 
         chart = echarts.init(el, null, { renderer: "canvas" });
         chart.group = chartGroup;
+        echarts.connect(chartGroup);
 
         instances[elementId] = chart;
         return chart;
@@ -67,18 +68,39 @@ window.flightCharts = (function () {
         return Math.ceil(maxSeconds / interval) * interval;
     }
 
-    function buildSeriesData(xValues, yValues) {
+    function getTargetPointCount(chart) {
+        const width = Math.max(200, chart.getWidth ? chart.getWidth() : 800);
+        return Math.max(500, Math.floor(width * 2));
+    }
+
+    function buildSeriesData(xValues, yValues, targetPointCount) {
         if (!xValues || !yValues) return [];
 
         const count = Math.min(xValues.length, yValues.length);
         if (count < 2) return [];
 
-        const result = new Array(count);
-        for (let i = 0; i < count; i++) {
-            result[i] = [xValues[i], yValues[i]];
+        const step = Math.max(1, Math.ceil(count / targetPointCount));
+
+        if (step === 1) {
+            const result = new Array(count);
+            for (let i = 0; i < count; i++) {
+                result[i] = [xValues[i], yValues[i]];
+            }
+            return result;
         }
 
-        return result;
+        const reduced = [];
+        for (let i = 0; i < count; i += step) {
+            reduced.push([xValues[i], yValues[i]]);
+        }
+
+        const lastIndex = count - 1;
+        const last = reduced[reduced.length - 1];
+        if (!last || last[0] !== xValues[lastIndex]) {
+            reduced.push([xValues[lastIndex], yValues[lastIndex]]);
+        }
+
+        return reduced;
     }
 
     function baseOption(title, unit, series, extra) {
@@ -89,7 +111,8 @@ window.flightCharts = (function () {
         const option = {
             animation: false,
             axisPointer: {
-                link: [{ xAxisIndex: "all" }]
+                link: [{ xAxisIndex: "all" }],
+                triggerTooltip: false
             },
             grid: {
                 left: 52,
@@ -108,16 +131,19 @@ window.flightCharts = (function () {
                 }
             },
             tooltip: {
+                show: true,
                 trigger: "axis",
                 confine: true,
                 axisPointer: {
                     type: "line",
                     snap: true,
                     label: {
-                        show: true
+                        show: false
                     }
                 },
+
                 formatter: function (params) {
+
                     if (!params || params.length === 0) return "";
 
                     const p = params[0];
@@ -155,13 +181,7 @@ window.flightCharts = (function () {
                     color: "#64748b"
                 },
                 axisPointer: {
-                    show: true,
-                    label: {
-                        show: true,
-                        formatter: function (params) {
-                            return formatValue(params.value, unit);
-                        }
-                    }
+                    show: false,
                 },
                 splitLine: {
                     lineStyle: {
@@ -180,7 +200,13 @@ window.flightCharts = (function () {
                 {
                     type: "line",
                     showSymbol: false,
+                    showAllSymbol: false,
+                    symbol: "none",
                     smooth: false,
+                    triggerLineEvent: false,
+                    emphasis: {
+                        disabled: true
+                    },
                     data: series,
                     lineStyle: extra.lineStyle,
                     areaStyle: extra.areaStyle ?? undefined
@@ -199,7 +225,8 @@ window.flightCharts = (function () {
         const chart = ensureChart(elementId);
         if (!chart || !xValues || !yValues) return;
 
-        const series = buildSeriesData(xValues, yValues);
+        const targetPointCount = getTargetPointCount(chart);
+        const series = buildSeriesData(xValues, yValues, targetPointCount);
 
         chart.setOption(baseOption(title, unit, series, extra), true);
         requestAnimationFrame(() => chart.resize());
