@@ -342,7 +342,7 @@ window.flightCharts = (function () {
             payload.timeSec,
             payload.altitudeValues,
             {
-                lineStyle: { width: 2, color: "#2563eb" },
+                lineStyle: { width: 1, color: "#2563eb" },
                 areaStyle: { opacity: 0.08 }
             }
         );
@@ -354,7 +354,7 @@ window.flightCharts = (function () {
             payload.timeSec,
             payload.varioValues,
             {
-                lineStyle: { width: 2, color: "#7c3aed" },
+                lineStyle: { width: 1, color: "#2563eb" },
                 markLine: {
                     silent: true,
                     symbol: "none",
@@ -375,7 +375,7 @@ window.flightCharts = (function () {
             payload.timeSec,
             payload.speedValues,
             {
-                lineStyle: { width: 2, color: "#ea580c" }
+                lineStyle: { width: 1, color: "#2563eb" }
             }
         );
 
