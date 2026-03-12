@@ -1,5 +1,6 @@
 @page "/flights/{Id}"
 
+@using FlightApp.Analysis
 @using FlightApp.Components
 @using FlightApp.Domain
 @using FlightApp.Services
@@ -7,7 +8,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 
-@implements IDisposable
+@implements IAsyncDisposable
 
 @inject FlightService FlightService
 @inject IJSRuntime JS
@@ -33,62 +34,60 @@
             <div class="state-text">No flight exists for the requested id.</div>
         </div>
     }
+    else if (displayedStats is null)
+    {
+        <div class="state-card">
+            <div class="state-title">Flight data incomplete</div>
+            <div class="state-text">Statistics are not available.</div>
+        </div>
+    }
     else
     {
         <div class="flight-header">
             <div class="flight-kpis-top">
-                <div class="hero-kpi">
+                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Date / Time</div>
-                    <div class="hero-kpi-value">@FormatDateTimeShort(flight.Stats.StartTimeUtc)</div>
+                    <div class="hero-kpi-value">@FormatDateTimeShort(displayedStats.StartTimeUtc)</div>
                     <div class="hero-kpi-sub">@NullOrDash(flight.PilotId)</div>
                 </div>
 
-                <div class="hero-kpi">
+                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Duration</div>
-                    <div class="hero-kpi-value">@FormatDuration(flight.Stats.Duration)</div>
+                    <div class="hero-kpi-value">@FormatDuration(displayedStats.Duration)</div>
                     <div class="hero-kpi-sub">@NullOrDash(flight.GliderId)</div>
                 </div>
 
-                <div class="hero-kpi">
+                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Distance</div>
-                    <div class="hero-kpi-value">@FormatDistanceKm(flight.Stats.TotalDistanceMeters)</div>
-                    <div class="hero-kpi-sub">Fixes @flight.Stats.FixCount</div>
+                    <div class="hero-kpi-value">@FormatDistanceKm(displayedStats.TotalDistanceMeters)</div>
+                    <div class="hero-kpi-sub">Fixes @displayedStats.FixCount</div>
                 </div>
 
-                <div class="hero-kpi">
+                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Altitude</div>
-                    <div class="hero-kpi-value">@FormatAltitudeMinMaxPreferred(flight.Stats)</div>
+                    <div class="hero-kpi-value">@FormatAltitudeMinMaxPreferred(displayedStats)</div>
                     <div class="hero-kpi-sub">Min / Max</div>
                 </div>
 
-                <div class="hero-kpi">
+                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Vario</div>
-                    <div class="hero-kpi-value">@FormatVarioMinMax(flight.Stats)</div>
+                    <div class="hero-kpi-value">@FormatVarioMinMax(displayedStats)</div>
                     <div class="hero-kpi-sub">Min / Max</div>
                 </div>
 
-                <div class="hero-kpi">
+                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Speed</div>
-                    <div class="hero-kpi-value">@FormatSpeedAvgMax(flight.Stats)</div>
+                    <div class="hero-kpi-value">@FormatSpeedAvgMax(displayedStats)</div>
                     <div class="hero-kpi-sub">Avg / Max</div>
                 </div>
 
-                <div class="hero-kpi">
+                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Takeoff / Landing Elevation</div>
                     <div class="hero-kpi-value">
-                        @FormatAltitudeValue(GetTakeoffHeight(flight.Stats)) /
-                        @FormatAltitudeValue(GetLandingHeight(flight.Stats))
+                        @FormatAltitudeValue(GetTakeoffHeight(displayedStats)) /
+                        @FormatAltitudeValue(GetLandingHeight(displayedStats))
                     </div>
                     <div class="hero-kpi-sub">m (start / land)</div>
-                </div>
-
-                <div class="hero-kpi">
-                    <div class="hero-kpi-label">Altitude (Min / Max)</div>
-                    <div class="hero-kpi-value">
-                        @FormatAltitudeValue(GetAltitudeMin(flight.Stats)) /
-                        @FormatAltitudeValue(GetAltitudeMax(flight.Stats))
-                    </div>
-                    <div class="hero-kpi-sub">m</div>
                 </div>
             </div>
         </div>
@@ -98,8 +97,8 @@
                 <FlightCharts Track="trackArrays" />
             </div>
 
-            <div class="splitter @(isResizing ? "splitter-active" : null)"                 @onmousedown="StartResize"
-                 @onmousedown:preventDefault="true"                 aria-label="Resize panels"                 role="separator">
+            <div class="splitter @(isResizing ? "splitter-active" : null)" @onmousedown="StartResize"
+                 @onmousedown:preventDefault="true" aria-label="Resize panels" role="separator">
             </div>
 
             <div class="right-pane">
@@ -118,6 +117,12 @@
     [Parameter]
     public string? Id { get; set; }
 
+
+    private readonly TrackSegmentStatsCalculator segmentStatsCalculator = new();
+
+    private SelectionRange? currentSelection;
+    private FlightStats? displayedStats;
+
     private Flight? flight;
     private TrackArrays? trackArrays;
     private bool isLoading;
@@ -131,6 +136,30 @@
     private double layoutWidth;
 
     private DotNetObjectReference<FlightDetails>? dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        dotNetRef ??= DotNetObjectReference.Create(this);
+
+        await JS.InvokeVoidAsync("flightCharts.registerSelectionCallback", dotNetRef);
+    }
+
+    [JSInvokable]
+    public Task OnChartSelection(int startIndex, int endIndex)
+    {
+        ApplySelection(startIndex, endIndex);
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnChartSelectionCleared()
+    {
+        ClearSelection();
+        return Task.CompletedTask;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -149,6 +178,9 @@
 
             flight = await FlightService.GetFlightByIdAsync(Id);
             trackArrays = await FlightService.GetTrackAsync(Id);
+
+            displayedStats = flight?.Stats;
+            currentSelection = null;
         }
         catch (Exception ex)
         {
@@ -158,6 +190,29 @@
         {
             isLoading = false;
         }
+    }
+
+    private void ApplySelection(int startIndex, int endIndex)
+    {
+        if (trackArrays is null)
+            return;
+
+        var selection = new SelectionRange(startIndex, endIndex);
+        if (!selection.IsValid)
+            return;
+
+        currentSelection = selection;
+        displayedStats = segmentStatsCalculator.Calculate(trackArrays, selection);
+
+        StateHasChanged();
+    }
+
+    private void ClearSelection()
+    {
+        currentSelection = null;
+        displayedStats = flight?.Stats;
+
+        StateHasChanged();
     }
 
     private string GetLeftPaneStyle()
@@ -207,8 +262,16 @@
         await JS.InvokeVoidAsync("flightDetails.notifyResize");
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        try
+        {
+            await JS.InvokeVoidAsync("flightCharts.clearSelectionCallback");
+        }
+        catch
+        {
+        }
+
         dotNetRef?.Dispose();
     }
 

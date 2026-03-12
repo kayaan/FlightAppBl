@@ -1,4 +1,5 @@
 window.flightCharts = (function () {
+
     const instances = {};
     const chartGroup = "flight-charts-sync-group";
 
@@ -13,7 +14,24 @@ window.flightCharts = (function () {
     let suppressChartToMap = false;
     let suppressMapToChart = false;
 
+    let selectionCallback = null;
+    let lastSelectionKey = null;
+
+
+    let isSyncingBrush = false;
+
+    function registerSelectionCallback(dotNetRef) {
+        selectionCallback = dotNetRef;
+    }
+
+    function clearSelectionCallback() {
+        selectionCallback = null;
+        lastSelectionKey = null;
+    }
+
+
     function ensureChart(elementId) {
+
         const el = document.getElementById(elementId);
         if (!el) return null;
 
@@ -21,18 +39,122 @@ window.flightCharts = (function () {
         if (chart) return chart;
 
         chart = echarts.init(el, null, { renderer: "canvas" });
+
         chart.group = chartGroup;
         echarts.connect(chartGroup);
+
+        chart.on("brushEnd", function (params) {
+            if (isSyncingBrush)
+                return;
+
+            if (!selectionCallback)
+                return;
+
+            const areas = params?.areas;
+
+            if (!areas || areas.length === 0) {
+                lastSelectionKey = null;
+
+                isSyncingBrush = true;
+
+                try {
+                    Object.values(instances).forEach(otherChart => {
+                        if (!otherChart) return;
+
+                        otherChart.dispatchAction({
+                            type: "brush",
+                            areas: []
+                        });
+                    });
+                } finally {
+                    setTimeout(() => {
+                        isSyncingBrush = false;
+                    }, 0);
+                }
+
+                selectionCallback.invokeMethodAsync("OnChartSelectionCleared");
+                return;
+            }
+
+            const range = areas[0]?.coordRange;
+            if (!range || range.length < 2)
+                return;
+
+            const seriesData = chart.__seriesData;
+            if (!seriesData || seriesData.length === 0)
+                return;
+
+            const x1 = Math.min(range[0], range[1]);
+            const x2 = Math.max(range[0], range[1]);
+
+            const startIndex = findFirstIndexAtOrAfterX(seriesData, x1);
+            const endIndex = findLastIndexAtOrBeforeX(seriesData, x2);
+
+            if (startIndex < 0 || endIndex < 0 || endIndex < startIndex)
+                return;
+
+            const key = `${startIndex}:${endIndex}`;
+            if (key === lastSelectionKey)
+                return;
+
+            lastSelectionKey = key;
+
+            // Selection visuell in allen Charts synchronisieren
+            isSyncingBrush = true;
+
+            try {
+                Object.values(instances).forEach(otherChart => {
+                    if (!otherChart) return;
+
+                    otherChart.dispatchAction({
+                        type: "brush",
+                        areas: [
+                            {
+                                brushType: "lineX",
+                                coordRange: [x1, x2],
+                                xAxisIndex: 0
+                            }
+                        ]
+                    });
+                });
+            } finally {
+                setTimeout(() => {
+                    isSyncingBrush = false;
+                }, 0);
+            }
+
+            selectionCallback.invokeMethodAsync(
+                "OnChartSelection",
+                startIndex,
+                endIndex
+            );
+        });
 
         chart.getZr().on("globalout", function () {
             clearCursor();
         });
 
+        chart.getZr().on("dblclick", function () {
+
+            chart.dispatchAction({
+                type: "brush",
+                areas: []
+            });
+
+            if (selectionCallback) {
+                selectionCallback.invokeMethodAsync("OnChartSelectionCleared");
+            }
+
+        });
+
         instances[elementId] = chart;
+
         return chart;
     }
 
+
     function dispose(elementId) {
+
         const chart = instances[elementId];
         if (!chart) return;
 
@@ -40,71 +162,92 @@ window.flightCharts = (function () {
         delete instances[elementId];
     }
 
-    function formatTime(seconds) {
-        const total = Math.max(0, Math.floor(seconds));
-        const h = Math.floor(total / 3600);
-        const m = Math.floor((total % 3600) / 60);
-        const s = total % 60;
-
-        if (h > 0) {
-            return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-        }
-
-        return `${m}:${String(s).padStart(2, "0")}`;
-    }
-
-    function formatAxisTime(seconds) {
-        const total = Math.max(0, Math.floor(seconds));
-        const h = Math.floor(total / 3600);
-        const m = Math.floor((total % 3600) / 60);
-        return `${h}:${String(m).padStart(2, "0")}`;
-    }
-
-    function formatValue(value, unit) {
-        if (value == null || Number.isNaN(value)) return `— ${unit}`;
-
-        const decimals =
-            unit === "m" ? 0 :
-            unit === "km/h" ? 0 :
-            1;
-
-        return `${Number(value).toFixed(decimals).replace(".", ",")} ${unit}`;
-    }
-
-    function getFlightAxisInterval(maxSeconds) {
-        if (maxSeconds <= 60 * 60) return 5 * 60;
-        if (maxSeconds <= 3 * 60 * 60) return 10 * 60;
-        if (maxSeconds <= 6 * 60 * 60) return 15 * 60;
-        return 30 * 60;
-    }
-
-    function getRoundedAxisMax(maxSeconds, interval) {
-        if (!maxSeconds || maxSeconds <= 0) return interval;
-        return Math.ceil(maxSeconds / interval) * interval;
-    }
 
     function buildSeriesData(xValues, yValues) {
+
         if (!xValues || !yValues) return [];
 
         const count = Math.min(xValues.length, yValues.length);
+
         if (count < 2) return [];
 
         const result = new Array(count);
 
         for (let i = 0; i < count; i++) {
+
             result[i] = [xValues[i], yValues[i], i];
         }
 
         return result;
     }
 
+
+    function findFirstIndexAtOrAfterX(seriesData, targetX) {
+
+        let left = 0;
+        let right = seriesData.length - 1;
+        let answer = -1;
+
+        while (left <= right) {
+
+            const mid = (left + right) >> 1;
+            const x = seriesData[mid][0];
+
+            if (x >= targetX) {
+
+                answer = seriesData[mid][2];
+                right = mid - 1;
+
+            } else {
+
+                left = mid + 1;
+            }
+        }
+
+        if (answer >= 0) return answer;
+
+        return seriesData[seriesData.length - 1][2];
+    }
+
+
+    function findLastIndexAtOrBeforeX(seriesData, targetX) {
+
+        let left = 0;
+        let right = seriesData.length - 1;
+        let answer = -1;
+
+        while (left <= right) {
+
+            const mid = (left + right) >> 1;
+            const x = seriesData[mid][0];
+
+            if (x <= targetX) {
+
+                answer = seriesData[mid][2];
+                left = mid + 1;
+
+            } else {
+
+                right = mid - 1;
+            }
+        }
+
+        if (answer >= 0) return answer;
+
+        return seriesData[0][2];
+    }
+
+
     function registerMapCursor(trackLatE7, trackLonE7, marker) {
+
         mapTrackLatE7 = trackLatE7;
         mapTrackLonE7 = trackLonE7;
         mapCursorMarker = marker;
+
         lastTrackIndex = -1;
 
         if (mapCursorMarker) {
+
             mapCursorMarker.setStyle({
                 opacity: 0,
                 fillOpacity: 0
@@ -112,10 +255,15 @@ window.flightCharts = (function () {
         }
     }
 
+
     function moveMapCursorToTrackIndex(trackIndex) {
+
         if (!mapCursorMarker || !mapTrackLatE7 || !mapTrackLonE7) return;
         if (trackIndex == null || trackIndex < 0) return;
-        if (trackIndex >= mapTrackLatE7.length || trackIndex >= mapTrackLonE7.length) return;
+
+        if (trackIndex >= mapTrackLatE7.length ||
+            trackIndex >= mapTrackLonE7.length)
+            return;
 
         const lat = mapTrackLatE7[trackIndex] / 1e7;
         const lon = mapTrackLonE7[trackIndex] / 1e7;
@@ -128,74 +276,100 @@ window.flightCharts = (function () {
         mapCursorMarker.setLatLng([lat, lon]);
     }
 
+
     function showCursorAtTrackIndex(trackIndex) {
+
         if (trackIndex == null || trackIndex < 0) return;
 
         suppressMapToChart = true;
 
         try {
+
             Object.values(instances).forEach(chart => {
-                if (!chart) return;
 
                 chart.dispatchAction({
                     type: "showTip",
                     seriesIndex: 0,
                     dataIndex: trackIndex
                 });
+
             });
 
             lastTrackIndex = trackIndex;
+
         } finally {
+
             suppressMapToChart = false;
         }
     }
 
+
     function hideCursor() {
+
         clearCursor();
     }
 
+
     function clearCursor() {
+
         suppressMapToChart = true;
 
         try {
+
             Object.values(instances).forEach(chart => {
-                if (!chart) return;
 
                 chart.dispatchAction({
                     type: "hideTip"
                 });
+
             });
 
             lastTrackIndex = -1;
 
             if (mapCursorMarker) {
+
                 mapCursorMarker.setStyle({
                     opacity: 0,
                     fillOpacity: 0
                 });
             }
+
         } finally {
+
             suppressMapToChart = false;
         }
     }
 
-    function baseOption(title, unit, series, extra) {
-        const maxX = series.length > 0 ? series[series.length - 1][0] : 0;
-        const axisInterval = getFlightAxisInterval(maxX);
-        const axisMax = getRoundedAxisMax(maxX, axisInterval);
 
-        const option = {
+    function baseOption(title, unit, series, extra) {
+
+        return {
+
             animation: false,
+
+            brush: {
+                xAxisIndex: "all",
+                brushMode: "single",
+                transformable: false,
+                brushStyle: {
+                    borderWidth: 1,
+                    color: "rgba(245, 158, 11, 0.16)",
+                    borderColor: "#f59e0b"
+                }
+            },
+
             axisPointer: {
                 link: [{ xAxisIndex: "all" }],
                 triggerTooltip: false
             },
+
             grid: {
                 left: 52,
                 right: 14,
                 top: 28,
                 bottom: 28
             },
+
             title: {
                 text: title,
                 left: 12,
@@ -206,135 +380,70 @@ window.flightCharts = (function () {
                     color: "#64748b"
                 }
             },
+
             tooltip: {
                 show: true,
                 trigger: "axis",
-                confine: true,
-                axisPointer: {
-                    type: "line",
-                    snap: true,
-                    label: {
-                        show: false
-                    }
-                },
-                formatter: function (params) {
-                    if (!params || params.length === 0) return "";
-
-                    const now = Date.now();
-                    const p = params[0];
-
-                    let trackIndex = null;
-
-                    if (Array.isArray(p.value) && p.value.length >= 3) {
-                        trackIndex = p.value[2];
-                    } else if (typeof p.dataIndex === "number") {
-                        trackIndex = p.dataIndex;
-                    }
-
-                    if (
-                        !suppressMapToChart &&
-                        trackIndex != null &&
-                        !Number.isNaN(trackIndex) &&
-                        trackIndex !== lastTrackIndex &&
-                        now - lastHoverUpdateMs >= hoverThrottleMs
-                    ) {
-                        lastHoverUpdateMs = now;
-                        lastTrackIndex = trackIndex;
-
-                        suppressChartToMap = true;
-                        try {
-                            moveMapCursorToTrackIndex(trackIndex);
-                        } finally {
-                            suppressChartToMap = false;
-                        }
-                    }
-
-                    const y = Array.isArray(p.value) ? p.value[1] : null;
-                    return formatValue(y, unit);
-                }
+                confine: true
             },
+
             xAxis: {
-                type: "value",
-                min: 0,
-                max: axisMax,
-                interval: axisInterval,
-                axisLabel: {
-                    color: "#94a3b8",
-                    formatter: value => formatAxisTime(value)
-                },
-                axisPointer: {
-                    show: true,
-                    snap: true,
-                    label: {
-                        show: true,
-                        formatter: function (params) {
-                            return formatTime(params.value);
-                        }
-                    }
-                },
-                splitLine: {
-                    show: false
-                }
+                type: "value"
             },
+
             yAxis: {
-                type: "value",
-                axisLabel: {
-                    color: "#64748b"
-                },
-                axisPointer: {
-                    show: false
-                },
-                splitLine: {
-                    lineStyle: {
-                        color: "#f1f5f9"
-                    }
-                }
+                type: "value"
             },
+
             dataZoom: [
                 {
                     type: "inside",
                     xAxisIndex: 0,
-                    filterMode: "none"
+                    filterMode: "none",
+                    zoomOnMouseWheel: true
                 }
             ],
+
             series: [
                 {
                     type: "line",
                     showSymbol: false,
-                    showAllSymbol: false,
-                    symbol: "none",
-                    smooth: false,
-                    triggerLineEvent: false,
-                    emphasis: {
-                        disabled: true
-                    },
                     data: series,
                     lineStyle: extra.lineStyle,
-                    areaStyle: extra.areaStyle ?? undefined,
-                    progressive: 5000,
-                    progressiveThreshold: 10000
+                    areaStyle: extra.areaStyle ?? undefined
                 }
             ]
         };
-
-        if (extra.markLine) {
-            option.series[0].markLine = extra.markLine;
-        }
-
-        return option;
     }
 
+
     function renderOne(elementId, title, unit, xValues, yValues, extra) {
+
         const chart = ensureChart(elementId);
+
         if (!chart || !xValues || !yValues) return;
 
         const series = buildSeriesData(xValues, yValues);
 
+        chart.__seriesData = series;
+
         chart.setOption(baseOption(title, unit, series, extra), true);
+
+        chart.dispatchAction({
+            type: "takeGlobalCursor",
+            key: "brush",
+            brushOption: {
+                brushType: "lineX",
+                brushMode: "single"
+            }
+        });
+
         requestAnimationFrame(() => chart.resize());
     }
 
+
     function renderAll(altId, varioId, speedId, payload) {
+
         renderOne(
             altId,
             payload.altitudeTitle,
@@ -354,17 +463,7 @@ window.flightCharts = (function () {
             payload.timeSec,
             payload.varioValues,
             {
-                lineStyle: { width: 1, color: "#2563eb" },
-                markLine: {
-                    silent: true,
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#cbd5e1",
-                        width: 1,
-                        type: "dashed"
-                    },
-                    data: [{ yAxis: 0 }]
-                }
+                lineStyle: { width: 1, color: "#2563eb" }
             }
         );
 
@@ -382,21 +481,25 @@ window.flightCharts = (function () {
         echarts.connect(chartGroup);
     }
 
-    function isSuppressChartToMap() {
-        return suppressChartToMap;
-    }
 
     window.addEventListener("resize", () => {
+
         Object.values(instances).forEach(chart => chart.resize());
+
     });
 
+
     return {
+
         renderAll,
         dispose,
         registerMapCursor,
         showCursorAtTrackIndex,
         hideCursor,
         clearCursor,
-        isSuppressChartToMap
+        registerSelectionCallback,
+        clearSelectionCallback
+
     };
+
 })();

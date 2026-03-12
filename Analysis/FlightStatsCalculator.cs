@@ -1,17 +1,47 @@
+// FlightApp\Analysis\FlightStatsCalculator.cs
+
 namespace FlightApp.Analysis;
 
 using FlightApp.Domain;
 
 public class FlightStatsCalculator
 {
+
+    public FlightStats Calculate(List<FixPoint> fixes, SelectionRange range)
+    {
+        if (!range.IsValid)
+            return new FlightStats();
+        return CalculateInternal(fixes, range.FromIndex, range.ToIndex, isSegmentSelection: true);
+    }
+
     public FlightStats Calculate(List<FixPoint> fixes)
+    {
+        if (fixes == null || fixes.Count == 0)
+            return new FlightStats();
+
+        return CalculateInternal(fixes, 0, fixes.Count - 1, isSegmentSelection: false);
+    }
+
+
+    private FlightStats CalculateInternal(
+        List<FixPoint> fixes,
+        int fromIndex,
+        int toIndex,
+        bool isSegmentSelection)
     {
         var stats = new FlightStats();
 
         if (fixes == null || fixes.Count == 0)
             return stats;
 
-        InitializeBasicStats(stats, fixes);
+        if (fromIndex < 0 || toIndex >= fixes.Count || fromIndex > toIndex)
+            return stats;
+
+        stats.IsSegmentSelection = isSegmentSelection;
+        stats.SelectionStartIndex = fromIndex;
+        stats.SelectionEndIndex = toIndex;
+
+        InitializeBasicStats(stats, fixes, fromIndex, toIndex);
 
         int? gpsMin = null;
         int? gpsMax = null;
@@ -30,10 +60,10 @@ public class FlightStatsCalculator
         double? maxVario = null;
         double? minVario = null;
 
-        int varioWindowStartIndex = 0;
+        int varioWindowStartIndex = fromIndex;
         FixPoint? previous = null;
 
-        for (int i = 0; i < fixes.Count; i++)
+        for (int i = fromIndex; i <= toIndex; i++)
         {
             var fix = fixes[i];
 
@@ -56,6 +86,7 @@ public class FlightStatsCalculator
             UpdateWindowVario(
                 fixes,
                 i,
+                fromIndex,
                 ref varioWindowStartIndex,
                 ref totalVario,
                 ref varioCount,
@@ -65,26 +96,27 @@ public class FlightStatsCalculator
             previous = fix;
         }
 
-        ApplyAltitudeStats(stats, fixes[0], fixes[^1], gpsMin, gpsMax, baroMin, baroMax);
+        ApplyAltitudeStats(stats, fixes[fromIndex], fixes[toIndex], gpsMin, gpsMax, baroMin, baroMax);
         ApplyDistanceAndSpeedStats(stats, totalDistance, totalTimeSeconds, maxSpeed);
         ApplyVarioStats(stats, totalVario, varioCount, maxVario, minVario);
         ApplyClimbSinkStats(stats, totalClimbMeters, totalSinkMeters);
-        ApplyStartEndGainLossStats(stats, fixes[0], fixes[^1]);
-        ApplyMaxAboveStartEndStats(stats, fixes[0], fixes[^1], gpsMax, baroMax);
+        ApplyStartEndGainLossStats(stats, fixes[fromIndex], fixes[toIndex]);
+        ApplyMaxAboveStartEndStats(stats, fixes[fromIndex], fixes[toIndex], gpsMax, baroMax);
 
         return stats;
     }
 
-    private static void InitializeBasicStats(FlightStats stats, List<FixPoint> fixes)
+    private static void InitializeBasicStats(FlightStats stats, List<FixPoint> fixes, int fromIndex, int toIndex)
     {
-        var first = fixes[0];
-        var last = fixes[^1];
+        var first = fixes[fromIndex];
+        var last = fixes[toIndex];
 
-        stats.FixCount = fixes.Count;
+        stats.FixCount = toIndex - fromIndex + 1;
         stats.StartTimeUtc = first.TimeUtc;
         stats.EndTimeUtc = last.TimeUtc;
         stats.Duration = last.TimeUtc - first.TimeUtc;
     }
+
 
     private static void UpdateAltitudeMinMax(
         FixPoint fix,
@@ -143,6 +175,7 @@ public class FlightStatsCalculator
     private static void UpdateWindowVario(
         List<FixPoint> fixes,
         int currentIndex,
+        int minAllowedIndex,
         ref int windowStartIndex,
         ref double totalVario,
         ref int varioCount,
@@ -156,6 +189,9 @@ public class FlightStatsCalculator
         {
             windowStartIndex++;
         }
+
+        if (windowStartIndex < minAllowedIndex)
+            windowStartIndex = minAllowedIndex;
 
         if (windowStartIndex >= currentIndex)
             return;
@@ -182,7 +218,6 @@ public class FlightStatsCalculator
         if (minVario == null || varioMs < minVario.Value)
             minVario = varioMs;
     }
-
     private static void ApplyAltitudeStats(
         FlightStats stats,
         FixPoint first,

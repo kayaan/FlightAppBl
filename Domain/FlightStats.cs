@@ -3,6 +3,13 @@ namespace FlightApp.Domain;
 
 public class FlightStats
 {
+
+    
+    public bool IsSegmentSelection { get; set; }
+
+    public int? SelectionStartIndex { get; set; }
+    public int? SelectionEndIndex { get; set; }
+
     public int FixCount { get; set; }
 
     public DateTime? StartTimeUtc { get; set; }
