@@ -223,6 +223,136 @@
     background: transparent;
 }
 
+.hero-kpi-selection {
+    border-color: #f59e0b;
+    border-width: 2px;
+}
+
+.hero-kpi-selection .hero-kpi-value {
+    color: #f59e0b;
+}
+
+.climb-nav-row {
+    flex: 0 0 auto;
+    width: 100%;
+    margin: 4px 0 12px 0;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.climb-nav-shell {
+    display: inline-flex;
+    width: max-content;
+    max-width: 100%;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #d6dee9;
+    background: #f8fafc;
+    box-shadow: none;
+}
+
+.climb-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    padding: 0 10px;
+}
+
+.climb-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #0f172a;
+    white-space: nowrap;
+}
+
+.climb-sub {
+    margin-top: 1px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.1;
+    color: #2563eb;
+    white-space: nowrap;
+}
+
+.climb-btn,
+.climb-btn-toggle,
+.climb-btn-clear {
+    height: 30px;
+    min-width: 32px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: #ffffff;
+    color: #0f172a;
+    cursor: pointer;
+    box-shadow: none;
+    transform: none;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.climb-btn:hover:not(:disabled),
+.climb-btn-toggle:hover:not(:disabled),
+.climb-btn-clear:hover:not(:disabled) {
+    background: #f1f5f9;
+}
+
+.climb-btn {
+    color: #ffffff;
+    background: #3b82f6;
+    border-color: #2563eb;
+}
+
+.climb-btn:hover:not(:disabled) {
+    background: #2563eb;
+}
+
+.climb-btn-primary {
+    background: #1d4ed8;
+    border-color: #1e40af;
+    color: #ffffff;
+}
+
+.climb-btn-primary:hover:not(:disabled) {
+    background: #1e40af;
+}
+
+.climb-btn-clear {
+    width: 30px;
+    min-width: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #475569;
+}
+
+.climb-btn-toggle {
+    color: #0f172a;
+    background: #ffffff;
+}
+
+.climb-btn-toggle-active {
+    background: #dbeafe;
+    border-color: #60a5fa;
+    color: #1d4ed8;
+}
+
+.climb-btn:disabled,
+.climb-btn-toggle:disabled,
+.climb-btn-clear:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 @media (max-width: 1200px) {
     .flight-details-page {
         height: auto;
@@ -268,19 +398,53 @@
     .flight-kpis-top {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .climb-nav-shell {
+        flex-wrap: wrap;
+        width: auto;
+        max-width: 100%;
+    }
+
+    .climb-info {
+        min-width: 140px;
+    }
 }
 
 @media (max-width: 560px) {
     .flight-kpis-top {
         grid-template-columns: 1fr;
     }
-}
 
-.hero-kpi-selection {
-    border-color: #f59e0b;
-    border-width: 2px;
-}
+    .climb-nav-shell {
+        gap: 6px;
+        padding: 8px;
+    }
 
-.hero-kpi-selection .hero-kpi-value {
-    color: #f59e0b;
+    .climb-info {
+        min-width: 120px;
+        padding: 0 6px;
+    }
+
+    .climb-title {
+        font-size: 12px;
+    }
+
+    .climb-sub {
+        font-size: 10px;
+    }
+
+    .climb-btn,
+    .climb-btn-toggle,
+    .climb-btn-clear {
+        height: 28px;
+        min-width: 28px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .climb-btn-clear {
+        width: 28px;
+        min-width: 28px;
+        padding: 0;
+    }
 }
