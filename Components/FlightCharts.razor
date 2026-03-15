@@ -1,5 +1,6 @@
 @namespace FlightApp.Components
 
+@using FlightApp.Analysis
 @using FlightApp.Domain
 @using Microsoft.JSInterop
 
@@ -26,15 +27,22 @@
     [Parameter]
     public TrackArrays? Track { get; set; }
 
+    [Parameter]
+    public ClimbSegment? SelectedClimb { get; set; }
+
     private readonly string altChartId = $"chart-alt-{Guid.NewGuid():N}";
     private readonly string varioChartId = $"chart-vario-{Guid.NewGuid():N}";
     private readonly string speedChartId = $"chart-speed-{Guid.NewGuid():N}";
 
     private bool disposed;
-    private string? lastSignature;
+
+    private string? lastDataSignature;
+
+    private string? lastClimbSignature;
 
     private bool HasTrack =>
         Track?.TDeltaMs is { Length: > 1 };
+
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -43,33 +51,75 @@
 
         if (!HasTrack)
         {
-            if (lastSignature is not null)
+            if (lastDataSignature is not null)
             {
                 await JS.InvokeVoidAsync("flightCharts.dispose", altChartId);
                 await JS.InvokeVoidAsync("flightCharts.dispose", varioChartId);
                 await JS.InvokeVoidAsync("flightCharts.dispose", speedChartId);
-                lastSignature = null;
+
+                lastDataSignature = null;
+                lastClimbSignature = null;
             }
 
             return;
         }
 
-        var signature = BuildSignature();
-        if (signature == lastSignature)
-            return;
+        var dataSignature = BuildDataSignature();
+        if (dataSignature != lastDataSignature)
+        {
+            var payload = BuildBasePayload();
+            if (payload is null)
+                return;
 
-        var payload = BuildPayload();
-        if (payload is null)
-            return;
+            await JS.InvokeVoidAsync(
+                "flightCharts.renderAll",
+                altChartId,
+                varioChartId,
+                speedChartId,
+                payload);
 
-        await JS.InvokeVoidAsync(
-            "flightCharts.renderAll",
-            altChartId,
-            varioChartId,
-            speedChartId,
-            payload);
+            lastDataSignature = dataSignature;
+            lastClimbSignature = null;
+        }
 
-        lastSignature = signature;
+        var climbSignature = BuildClimbSignature();
+        if (climbSignature != lastClimbSignature)
+        {
+            var climbPayload = BuildSelectedClimbPayload();
+
+            await JS.InvokeVoidAsync(
+                "flightCharts.updateSelectedClimb",
+                altChartId,
+                varioChartId,
+                speedChartId,
+                climbPayload);
+
+            lastClimbSignature = climbSignature;
+        }
+    }
+
+    private string BuildDataSignature()
+    {
+        var t = Track!.TDeltaMs;
+        var count = t.Length;
+
+        var alt = SelectAltitudeSource();
+        var speed = Track.SpeedCms;
+        var vario = Track.VarioCms;
+
+        var altLen = alt?.Length ?? 0;
+        var speedLen = speed?.Length ?? 0;
+        var varioLen = vario?.Length ?? 0;
+
+        return $"{count}:{altLen}:{speedLen}:{varioLen}:{t[0]}:{t[count - 1]}";
+    }
+
+    private string BuildClimbSignature()
+    {
+        var selectedBegin = SelectedClimb?.BeginIndex ?? -1;
+        var selectedEnd = SelectedClimb?.EndIndex ?? -1;
+
+        return $"{selectedBegin}:{selectedEnd}";
     }
 
     public async ValueTask DisposeAsync()
@@ -90,31 +140,63 @@
         }
     }
 
-    private object? BuildPayload()
+
+    private FlightChartsPayload? BuildBasePayload()
     {
         if (Track?.TDeltaMs is not { Length: > 1 } tDeltaMs)
             return null;
 
-        var timeSec = BuildTimeSeconds(tDeltaMs);
-        var altitudeValues = BuildScaledSeries(SelectAltitudeSource(), 0.01);
-        var varioValues = BuildScaledSeries(Track.VarioCms, 0.01);
-        var speedValues = BuildScaledSeries(Track.SpeedCms, 0.036);
-
-        return new
+        return new FlightChartsPayload
         {
-            timeSec,
+            TimeSec = BuildTimeSeconds(tDeltaMs),
 
-            altitudeTitle = "Altitude",
-            altitudeUnit = "m",
-            altitudeValues,
+            AltitudeTitle = "Altitude",
+            AltitudeUnit = "m",
+            AltitudeValues = BuildScaledSeries(SelectAltitudeSource(), 0.01),
 
-            varioTitle = "Vario",
-            varioUnit = "m/s",
-            varioValues,
+            VarioTitle = "Vario",
+            VarioUnit = "m/s",
+            VarioValues = BuildScaledSeries(Track.VarioCms, 0.01),
 
-            speedTitle = "Speed",
-            speedUnit = "km/h",
-            speedValues
+            SpeedTitle = "Speed",
+            SpeedUnit = "km/h",
+            SpeedValues = BuildScaledSeries(Track.SpeedCms, 0.036)
+        };
+    }
+
+    private SelectedClimbPayload BuildSelectedClimbPayload()
+    {
+        return new SelectedClimbPayload
+        {
+            SelectedClimbBeginIndex = SelectedClimb?.BeginIndex,
+            SelectedClimbEndIndex = SelectedClimb?.EndIndex
+        };
+    }
+
+
+    private FlightChartsPayload? BuildPayload()
+    {
+        if (Track?.TDeltaMs is not { Length: > 1 } tDeltaMs)
+            return null;
+
+        return new FlightChartsPayload
+        {
+            TimeSec = BuildTimeSeconds(tDeltaMs),
+
+            AltitudeTitle = "Altitude",
+            AltitudeUnit = "m",
+            AltitudeValues = BuildScaledSeries(SelectAltitudeSource(), 0.01),
+
+            VarioTitle = "Vario",
+            VarioUnit = "m/s",
+            VarioValues = BuildScaledSeries(Track.VarioCms, 0.01),
+
+            SpeedTitle = "Speed",
+            SpeedUnit = "km/h",
+            SpeedValues = BuildScaledSeries(Track.SpeedCms, 0.036),
+
+            SelectedClimbBeginIndex = SelectedClimb?.BeginIndex,
+            SelectedClimbEndIndex = SelectedClimb?.EndIndex
         };
     }
 
@@ -171,6 +253,9 @@
         var speedLen = speed?.Length ?? 0;
         var varioLen = vario?.Length ?? 0;
 
-        return $"{count}:{altLen}:{speedLen}:{varioLen}:{t[0]}:{t[count - 1]}";
+        var selectedBegin = SelectedClimb?.BeginIndex ?? -1;
+        var selectedEnd = SelectedClimb?.EndIndex ?? -1;
+
+        return $"{count}:{altLen}:{speedLen}:{varioLen}:{t[0]}:{t[count - 1]}:{selectedBegin}:{selectedEnd}";
     }
 }

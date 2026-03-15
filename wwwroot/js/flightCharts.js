@@ -17,7 +17,6 @@ window.flightCharts = (function () {
     let selectionCallback = null;
     let lastSelectionKey = null;
 
-
     let isSyncingBrush = false;
 
     function registerSelectionCallback(dotNetRef) {
@@ -29,9 +28,7 @@ window.flightCharts = (function () {
         lastSelectionKey = null;
     }
 
-
     function ensureChart(elementId) {
-
         const el = document.getElementById(elementId);
         if (!el) return null;
 
@@ -99,7 +96,6 @@ window.flightCharts = (function () {
 
             lastSelectionKey = key;
 
-            // Selection visuell in allen Charts synchronisieren
             isSyncingBrush = true;
 
             try {
@@ -135,7 +131,6 @@ window.flightCharts = (function () {
         });
 
         chart.getZr().on("dblclick", function () {
-
             chart.dispatchAction({
                 type: "brush",
                 areas: []
@@ -144,17 +139,13 @@ window.flightCharts = (function () {
             if (selectionCallback) {
                 selectionCallback.invokeMethodAsync("OnChartSelectionCleared");
             }
-
         });
 
         instances[elementId] = chart;
-
         return chart;
     }
 
-
     function dispose(elementId) {
-
         const chart = instances[elementId];
         if (!chart) return;
 
@@ -162,84 +153,64 @@ window.flightCharts = (function () {
         delete instances[elementId];
     }
 
-
     function buildSeriesData(xValues, yValues) {
-
         if (!xValues || !yValues) return [];
 
         const count = Math.min(xValues.length, yValues.length);
-
         if (count < 2) return [];
 
         const result = new Array(count);
 
         for (let i = 0; i < count; i++) {
-
             result[i] = [xValues[i], yValues[i], i];
         }
 
         return result;
     }
 
-
     function findFirstIndexAtOrAfterX(seriesData, targetX) {
-
         let left = 0;
         let right = seriesData.length - 1;
         let answer = -1;
 
         while (left <= right) {
-
             const mid = (left + right) >> 1;
             const x = seriesData[mid][0];
 
             if (x >= targetX) {
-
                 answer = seriesData[mid][2];
                 right = mid - 1;
-
             } else {
-
                 left = mid + 1;
             }
         }
 
         if (answer >= 0) return answer;
-
         return seriesData[seriesData.length - 1][2];
     }
 
-
     function findLastIndexAtOrBeforeX(seriesData, targetX) {
-
         let left = 0;
         let right = seriesData.length - 1;
         let answer = -1;
 
         while (left <= right) {
-
             const mid = (left + right) >> 1;
             const x = seriesData[mid][0];
 
             if (x <= targetX) {
-
                 answer = seriesData[mid][2];
                 left = mid + 1;
-
             } else {
-
                 right = mid - 1;
             }
         }
 
         if (answer >= 0) return answer;
-
         return seriesData[0][2];
     }
 
-
     function registerMapCursor(trackLatE7, trackLonE7, marker) {
-
         mapTrackLatE7 = trackLatE7;
         mapTrackLonE7 = trackLonE7;
         mapCursorMarker = marker;
@@ -247,7 +218,6 @@ window.flightCharts = (function () {
         lastTrackIndex = -1;
 
         if (mapCursorMarker) {
-
             mapCursorMarker.setStyle({
                 opacity: 0,
                 fillOpacity: 0
@@ -255,14 +225,11 @@ window.flightCharts = (function () {
         }
     }
 
-
     function moveMapCursorToTrackIndex(trackIndex) {
-
         if (!mapCursorMarker || !mapTrackLatE7 || !mapTrackLonE7) return;
         if (trackIndex == null || trackIndex < 0) return;
 
-        if (trackIndex >= mapTrackLatE7.length ||
-            trackIndex >= mapTrackLonE7.length)
+        if (trackIndex >= mapTrackLatE7.length || trackIndex >= mapTrackLonE7.length)
             return;
 
         const lat = mapTrackLatE7[trackIndex] / 1e7;
@@ -276,75 +243,88 @@ window.flightCharts = (function () {
         mapCursorMarker.setLatLng([lat, lon]);
     }
 
-
     function showCursorAtTrackIndex(trackIndex) {
-
         if (trackIndex == null || trackIndex < 0) return;
 
         suppressMapToChart = true;
 
         try {
-
             Object.values(instances).forEach(chart => {
-
                 chart.dispatchAction({
                     type: "showTip",
                     seriesIndex: 0,
                     dataIndex: trackIndex
                 });
-
             });
 
             lastTrackIndex = trackIndex;
-
         } finally {
-
             suppressMapToChart = false;
         }
     }
 
-
     function hideCursor() {
-
         clearCursor();
     }
 
-
     function clearCursor() {
-
         suppressMapToChart = true;
 
         try {
-
             Object.values(instances).forEach(chart => {
-
                 chart.dispatchAction({
                     type: "hideTip"
                 });
-
             });
 
             lastTrackIndex = -1;
 
             if (mapCursorMarker) {
-
                 mapCursorMarker.setStyle({
                     opacity: 0,
                     fillOpacity: 0
                 });
             }
-
         } finally {
-
             suppressMapToChart = false;
         }
     }
 
+    function buildSelectedClimbMarkLine(seriesData, payload) {
+        const beginIndex = payload?.selectedClimbBeginIndex ?? payload?.SelectedClimbBeginIndex;
+        const endIndex = payload?.selectedClimbEndIndex ?? payload?.SelectedClimbEndIndex;
 
-    function baseOption(title, unit, series, extra) {
+        if (beginIndex == null || endIndex == null)
+            return null;
+
+        if (!seriesData || seriesData.length === 0)
+            return null;
+
+        const beginPoint = seriesData.find(p => p[2] === beginIndex);
+        const endPoint = seriesData.find(p => p[2] === endIndex);
+
+        if (!beginPoint || !endPoint)
+            return null;
 
         return {
+            silent: true,
+            symbol: ["none", "none"],
+            animation: false,
+            label: { show: false },
+            lineStyle: {
+                type: "dashed",
+                width: 1,
+                color: "#ef4444"
+            },
+            data: [
+                { xAxis: beginPoint[0] },
+                { xAxis: endPoint[0] }
+            ]
+        };
+    }
 
+    function baseOption(title, unit, series, extra) {
+        return {
             animation: false,
 
             brush: {
@@ -416,15 +396,11 @@ window.flightCharts = (function () {
         };
     }
 
-
     function renderOne(elementId, title, unit, xValues, yValues, extra) {
-
         const chart = ensureChart(elementId);
-
         if (!chart || !xValues || !yValues) return;
 
         const series = buildSeriesData(xValues, yValues);
-
         chart.__seriesData = series;
 
         chart.setOption(baseOption(title, unit, series, extra), true);
@@ -441,9 +417,33 @@ window.flightCharts = (function () {
         requestAnimationFrame(() => chart.resize());
     }
 
+    function updateSelectedClimbOne(elementId, payload) {
+        const chart = instances[elementId];
+        if (!chart)
+            return;
+
+        const seriesData = chart.__seriesData;
+        if (!seriesData || seriesData.length === 0)
+            return;
+
+        const markLine = buildSelectedClimbMarkLine(seriesData, payload);
+
+        chart.setOption({
+            series: [
+                {
+                    markLine: markLine ?? { data: [] }
+                }
+            ]
+        }, false);
+    }
+
+    function updateSelectedClimb(altId, varioId, speedId, payload) {
+        updateSelectedClimbOne(altId, payload);
+        updateSelectedClimbOne(varioId, payload);
+        updateSelectedClimbOne(speedId, payload);
+    }
 
     function renderAll(altId, varioId, speedId, payload) {
-
         renderOne(
             altId,
             payload.altitudeTitle,
@@ -481,17 +481,13 @@ window.flightCharts = (function () {
         echarts.connect(chartGroup);
     }
 
-
     window.addEventListener("resize", () => {
-
         Object.values(instances).forEach(chart => chart.resize());
-
     });
 
-
     return {
-
         renderAll,
+        updateSelectedClimb,
         dispose,
         registerMapCursor,
         showCursorAtTrackIndex,
@@ -499,7 +495,6 @@ window.flightCharts = (function () {
         clearCursor,
         registerSelectionCallback,
         clearSelectionCallback
-
     };
 
 })();
