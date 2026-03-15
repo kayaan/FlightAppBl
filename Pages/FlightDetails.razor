@@ -71,8 +71,8 @@
 
                 <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Vario</div>
-                    <div class="hero-kpi-value">@FormatVarioMinMax(displayedStats)</div>
-                    <div class="hero-kpi-sub">Min / Max</div>
+                    <div class="hero-kpi-value">@FormatVario(displayedStats, SelectedClimb)</div>
+                    <div class="hero-kpi-sub">@(SelectedClimb is null ? "Min / Max" : "Min / Max / Avg")</div>
                 </div>
 
                 <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
@@ -82,14 +82,51 @@
                 </div>
 
                 <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">Takeoff / Landing Elevation</div>
+                    <div class="hero-kpi-label">@(SelectedClimb is null ? "Takeoff / Landing Elevation" : "Gain")</div>
                     <div class="hero-kpi-value">
-                        @FormatAltitudeValue(GetTakeoffHeight(displayedStats)) /
-                        @FormatAltitudeValue(GetLandingHeight(displayedStats))
+                        @if (SelectedClimb is null)
+                        {
+                            @($"{FormatAltitudeValue(GetTakeoffHeight(displayedStats))} / {FormatAltitudeValue(GetLandingHeight(displayedStats))}")
+                        }
+                        else
+                        {
+                            @FormatGain(SelectedClimb)
+                        }
                     </div>
-                    <div class="hero-kpi-sub">m (start / land)</div>
+                    <div class="hero-kpi-sub">@(SelectedClimb is null ? "m (start / land)" : "Net climb")</div>
                 </div>
             </div>
+
+            @if (climbSegments.Count > 0)
+            {
+                <div class="climb-nav">
+                    <button type="button"
+                            class="climb-nav-button"
+                            @onclick="SelectPreviousClimb"
+                            disabled="@(!CanSelectPreviousClimb)">
+                        ←
+                    </button>
+
+                    <div class="climb-nav-center">
+                        <div class="climb-nav-title">@GetClimbNavigatorTitle()</div>
+                        <div class="climb-nav-sub">@GetClimbNavigatorSubtitle()</div>
+                    </div>
+
+                    <button type="button"
+                            class="climb-nav-button"
+                            @onclick="SelectNextClimb"
+                            disabled="@(!CanSelectNextClimb)">
+                        →
+                    </button>
+
+                    @if (currentSelection is not null)
+                    {
+                        <button type="button" class="climb-clear-button" @onclick="ClearSelection">
+                            Clear
+                        </button>
+                    }
+                </div>
+            }
         </div>
 
         <div class="flight-layout" @ref="flightLayoutRef">
@@ -97,8 +134,11 @@
                 <FlightCharts Track="trackArrays" />
             </div>
 
-            <div class="splitter @(isResizing ? "splitter-active" : null)" @onmousedown="StartResize"
-                 @onmousedown:preventDefault="true" aria-label="Resize panels" role="separator">
+            <div class="splitter @(isResizing ? "splitter-active" : null)"
+                 @onmousedown="StartResize"
+                 @onmousedown:preventDefault="true"
+                 aria-label="Resize panels"
+                 role="separator">
             </div>
 
             <div class="right-pane">
@@ -117,7 +157,6 @@
     [Parameter]
     public string? Id { get; set; }
 
-
     private readonly TrackSegmentStatsCalculator segmentStatsCalculator = new();
 
     private SelectionRange? currentSelection;
@@ -125,6 +164,9 @@
 
     private Flight? flight;
     private TrackArrays? trackArrays;
+    private List<ClimbSegment> climbSegments = new();
+    private int? selectedClimbIndex;
+
     private bool isLoading;
     private string? errorMessage;
 
@@ -136,6 +178,20 @@
     private double layoutWidth;
 
     private DotNetObjectReference<FlightDetails>? dotNetRef;
+
+    private ClimbSegment? SelectedClimb
+        => selectedClimbIndex.HasValue &&
+           selectedClimbIndex.Value >= 0 &&
+           selectedClimbIndex.Value < climbSegments.Count
+            ? climbSegments[selectedClimbIndex.Value]
+            : null;
+
+    private bool CanSelectPreviousClimb
+        => selectedClimbIndex.HasValue && selectedClimbIndex.Value > 0;
+
+    private bool CanSelectNextClimb
+        => climbSegments.Count > 0 &&
+           (!selectedClimbIndex.HasValue || selectedClimbIndex.Value < climbSegments.Count - 1);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -150,6 +206,7 @@
     [JSInvokable]
     public Task OnChartSelection(int startIndex, int endIndex)
     {
+        selectedClimbIndex = null;
         ApplySelection(startIndex, endIndex);
         return Task.CompletedTask;
     }
@@ -167,6 +224,10 @@
         errorMessage = null;
         flight = null;
         trackArrays = null;
+        displayedStats = null;
+        currentSelection = null;
+        climbSegments = new List<ClimbSegment>();
+        selectedClimbIndex = null;
 
         try
         {
@@ -180,7 +241,11 @@
             trackArrays = await FlightService.GetTrackAsync(Id);
 
             displayedStats = flight?.Stats;
-            currentSelection = null;
+
+            if (trackArrays is not null)
+            {
+                climbSegments = ClimbDetector.DetectClimbs(trackArrays);
+            }
         }
         catch (Exception ex)
         {
@@ -209,10 +274,47 @@
 
     private void ClearSelection()
     {
+        selectedClimbIndex = null;
         currentSelection = null;
         displayedStats = flight?.Stats;
 
         StateHasChanged();
+    }
+
+    private void SelectPreviousClimb()
+    {
+        if (!CanSelectPreviousClimb)
+            return;
+
+        SelectClimb(selectedClimbIndex!.Value - 1);
+    }
+
+    private void SelectNextClimb()
+    {
+        if (climbSegments.Count == 0)
+            return;
+
+        if (!selectedClimbIndex.HasValue)
+        {
+            SelectClimb(0);
+            return;
+        }
+
+        if (selectedClimbIndex.Value >= climbSegments.Count - 1)
+            return;
+
+        SelectClimb(selectedClimbIndex.Value + 1);
+    }
+
+    private void SelectClimb(int index)
+    {
+        if (index < 0 || index >= climbSegments.Count)
+            return;
+
+        selectedClimbIndex = index;
+
+        var climb = climbSegments[index];
+        ApplySelection(climb.BeginIndex, climb.EndIndex);
     }
 
     private string GetLeftPaneStyle()
@@ -275,6 +377,29 @@
         dotNetRef?.Dispose();
     }
 
+    private string GetClimbNavigatorTitle()
+    {
+        if (climbSegments.Count == 0)
+            return "No climbs";
+
+        if (!selectedClimbIndex.HasValue)
+            return $"Climb — / {climbSegments.Count}";
+
+        return $"Climb {selectedClimbIndex.Value + 1} / {climbSegments.Count}";
+    }
+
+    private string GetClimbNavigatorSubtitle()
+    {
+        if (climbSegments.Count == 0)
+            return string.Empty;
+
+        var climb = SelectedClimb;
+        if (climb is null)
+            return $"{climbSegments.Count} climbs detected";
+
+        return $"{FormatGain(climb)} · {climb.AvgClimbRateMs:0.0} m/s";
+    }
+
     private static string NullOrDash(string? value)
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
 
@@ -319,18 +444,21 @@
         return $"{minText} / {maxText} m";
     }
 
-    private static string FormatVarioMinMax(FlightStats stats)
+    private static string FormatVario(FlightStats stats, ClimbSegment? climb)
     {
         var min = stats.MinVarioMs;
         var max = stats.MaxVarioMs;
 
         if (!min.HasValue && !max.HasValue)
-            return "—";
+            return climb is null ? "—" : $"{climb.AvgClimbRateMs:0.0} m/s";
 
         var minText = min.HasValue ? $"{min.Value:0.0}" : "—";
         var maxText = max.HasValue ? $"{max.Value:0.0}" : "—";
 
-        return $"{minText} / {maxText} m/s";
+        if (climb is null)
+            return $"{minText} / {maxText} m/s";
+
+        return $"{minText} / {maxText} / {climb.AvgClimbRateMs:0.0} m/s";
     }
 
     private static string FormatSpeedAvgMax(FlightStats stats)
@@ -341,15 +469,12 @@
         return $"{avgText} / {maxText} km/h";
     }
 
+    private static string FormatGain(ClimbSegment climb)
+        => $"{climb.GainM:0} m";
+
     private static int? GetTakeoffHeight(FlightStats stats)
         => stats.AltBaroStart ?? stats.AltGpsStart;
 
     private static int? GetLandingHeight(FlightStats stats)
         => stats.AltBaroEnd ?? stats.AltGpsEnd;
-
-    private static int? GetAltitudeMin(FlightStats stats)
-        => stats.AltBaroMin ?? stats.AltGpsMin;
-
-    private static int? GetAltitudeMax(FlightStats stats)
-        => stats.AltBaroMax ?? stats.AltGpsMax;
 }

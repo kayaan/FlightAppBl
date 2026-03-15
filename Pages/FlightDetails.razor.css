@@ -280,3 +280,7 @@
     border-color: #f59e0b;
     border-width: 2px;
 }
+
+.hero-kpi-selection .hero-kpi-value {
+    color: #f59e0b;
+}
