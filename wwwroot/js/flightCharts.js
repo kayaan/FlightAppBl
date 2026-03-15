@@ -492,6 +492,9 @@ window.flightCharts = (function () {
                 markLine: {
                     silent: true,
                     symbol: ["none", "none"],
+                    label: {
+                        show: false
+                    },
                     data: lines
                 }
             }]
