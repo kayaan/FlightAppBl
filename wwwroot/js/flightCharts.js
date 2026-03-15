@@ -325,6 +325,9 @@ window.flightCharts = (function () {
 
     function baseOption(title, unit, series, extra) {
         return {
+            toolbox: {
+                show: false
+            },
             animation: false,
 
             brush: {
