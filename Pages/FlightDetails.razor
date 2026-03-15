@@ -134,7 +134,8 @@
 
         <div class="flight-layout" @ref="flightLayoutRef">
             <div class="left-pane" style="@GetLeftPaneStyle()">
-                <FlightCharts Track="trackArrays"              SelectedClimb="SelectedClimb" />
+                <FlightCharts    Track="trackArrays"    SelectedClimb="SelectedClimb"    ClimbSegments="climbSegments"
+                                 ShowAllClimbs="showAllClimbs" />
             </div>
 
             <div class="splitter @(isResizing ? "splitter-active" : null)" @onmousedown="StartResize"

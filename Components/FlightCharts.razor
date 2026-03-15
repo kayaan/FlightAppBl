@@ -24,11 +24,11 @@
 </div>
 
 @code {
-    [Parameter]
-    public TrackArrays? Track { get; set; }
 
-    [Parameter]
-    public ClimbSegment? SelectedClimb { get; set; }
+    [Parameter] public TrackArrays? Track { get; set; }
+    [Parameter] public ClimbSegment? SelectedClimb { get; set; }
+    [Parameter] public IReadOnlyList<ClimbSegment>? ClimbSegments { get; set; }
+    [Parameter] public bool ShowAllClimbs { get; set; }
 
     private readonly string altChartId = $"chart-alt-{Guid.NewGuid():N}";
     private readonly string varioChartId = $"chart-vario-{Guid.NewGuid():N}";
@@ -37,12 +37,10 @@
     private bool disposed;
 
     private string? lastDataSignature;
-
     private string? lastClimbSignature;
+    private string? lastAllClimbsSignature;
 
-    private bool HasTrack =>
-        Track?.TDeltaMs is { Length: > 1 };
-
+    private bool HasTrack => Track?.TDeltaMs is { Length: > 1 };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -59,12 +57,14 @@
 
                 lastDataSignature = null;
                 lastClimbSignature = null;
+                lastAllClimbsSignature = null;
             }
 
             return;
         }
 
         var dataSignature = BuildDataSignature();
+
         if (dataSignature != lastDataSignature)
         {
             var payload = BuildBasePayload();
@@ -80,46 +80,40 @@
 
             lastDataSignature = dataSignature;
             lastClimbSignature = null;
+            lastAllClimbsSignature = null;
         }
 
         var climbSignature = BuildClimbSignature();
+
         if (climbSignature != lastClimbSignature)
         {
-            var climbPayload = BuildSelectedClimbPayload();
+            var payload = BuildSelectedClimbPayload();
 
             await JS.InvokeVoidAsync(
                 "flightCharts.updateSelectedClimb",
                 altChartId,
                 varioChartId,
                 speedChartId,
-                climbPayload);
+                payload);
 
             lastClimbSignature = climbSignature;
         }
-    }
 
-    private string BuildDataSignature()
-    {
-        var t = Track!.TDeltaMs;
-        var count = t.Length;
+        var allSignature = BuildAllClimbsSignature();
 
-        var alt = SelectAltitudeSource();
-        var speed = Track.SpeedCms;
-        var vario = Track.VarioCms;
+        if (allSignature != lastAllClimbsSignature)
+        {
+            var payload = BuildAllClimbsPayload();
 
-        var altLen = alt?.Length ?? 0;
-        var speedLen = speed?.Length ?? 0;
-        var varioLen = vario?.Length ?? 0;
+            await JS.InvokeVoidAsync(
+                "flightCharts.updateAllClimbs",
+                altChartId,
+                varioChartId,
+                speedChartId,
+                payload);
 
-        return $"{count}:{altLen}:{speedLen}:{varioLen}:{t[0]}:{t[count - 1]}";
-    }
-
-    private string BuildClimbSignature()
-    {
-        var selectedBegin = SelectedClimb?.BeginIndex ?? -1;
-        var selectedEnd = SelectedClimb?.EndIndex ?? -1;
-
-        return $"{selectedBegin}:{selectedEnd}";
+            lastAllClimbsSignature = allSignature;
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -135,11 +129,36 @@
             await JS.InvokeVoidAsync("flightCharts.dispose", varioChartId);
             await JS.InvokeVoidAsync("flightCharts.dispose", speedChartId);
         }
-        catch
-        {
-        }
+        catch { }
     }
 
+    private string BuildDataSignature()
+    {
+        var t = Track!.TDeltaMs;
+        var count = t.Length;
+
+        var alt = SelectAltitudeSource();
+        var speed = Track.SpeedCms;
+        var vario = Track.VarioCms;
+
+        return $"{count}:{alt?.Length ?? 0}:{speed?.Length ?? 0}:{vario?.Length ?? 0}:{t[0]}:{t[count - 1]}";
+    }
+
+    private string BuildClimbSignature()
+    {
+        var begin = SelectedClimb?.BeginIndex ?? -1;
+        var end = SelectedClimb?.EndIndex ?? -1;
+
+        return $"{begin}:{end}";
+    }
+
+    private string BuildAllClimbsSignature()
+    {
+        if (!ShowAllClimbs || ClimbSegments == null)
+            return "off";
+
+        return $"on:{ClimbSegments.Count}";
+    }
 
     private FlightChartsPayload? BuildBasePayload()
     {
@@ -173,43 +192,28 @@
         };
     }
 
-
-    private FlightChartsPayload? BuildPayload()
+    private AllClimbsPayload BuildAllClimbsPayload()
     {
-        if (Track?.TDeltaMs is not { Length: > 1 } tDeltaMs)
-            return null;
+        if (!ShowAllClimbs || ClimbSegments == null)
+            return new AllClimbsPayload { ShowAllClimbs = false };
 
-        return new FlightChartsPayload
+        return new AllClimbsPayload
         {
-            TimeSec = BuildTimeSeconds(tDeltaMs),
-
-            AltitudeTitle = "Altitude",
-            AltitudeUnit = "m",
-            AltitudeValues = BuildScaledSeries(SelectAltitudeSource(), 0.01),
-
-            VarioTitle = "Vario",
-            VarioUnit = "m/s",
-            VarioValues = BuildScaledSeries(Track.VarioCms, 0.01),
-
-            SpeedTitle = "Speed",
-            SpeedUnit = "km/h",
-            SpeedValues = BuildScaledSeries(Track.SpeedCms, 0.036),
-
-            SelectedClimbBeginIndex = SelectedClimb?.BeginIndex,
-            SelectedClimbEndIndex = SelectedClimb?.EndIndex
+            ShowAllClimbs = true,
+            Begin = ClimbSegments.Select(c => c.BeginIndex).ToList(),
+            End = ClimbSegments.Select(c => c.EndIndex).ToList()
         };
     }
 
     private static double[] BuildTimeSeconds(int[] tDeltaMs)
     {
-        var count = tDeltaMs.Length;
-        var result = new double[count];
+        var result = new double[tDeltaMs.Length];
+        double total = 0;
 
-        double totalMs = 0;
-        for (var i = 0; i < count; i++)
+        for (int i = 0; i < tDeltaMs.Length; i++)
         {
-            totalMs += tDeltaMs[i];
-            result[i] = totalMs / 1000.0;
+            total += tDeltaMs[i];
+            result[i] = total / 1000.0;
         }
 
         return result;
@@ -221,10 +225,9 @@
             return null;
 
         var result = new double[source.Length];
-        for (var i = 0; i < source.Length; i++)
-        {
+
+        for (int i = 0; i < source.Length; i++)
             result[i] = source[i] * scale;
-        }
 
         return result;
     }
@@ -238,24 +241,5 @@
             return Track.AltGpsCm;
 
         return null;
-    }
-
-    private string BuildSignature()
-    {
-        var t = Track!.TDeltaMs;
-        var count = t.Length;
-
-        var alt = SelectAltitudeSource();
-        var speed = Track.SpeedCms;
-        var vario = Track.VarioCms;
-
-        var altLen = alt?.Length ?? 0;
-        var speedLen = speed?.Length ?? 0;
-        var varioLen = vario?.Length ?? 0;
-
-        var selectedBegin = SelectedClimb?.BeginIndex ?? -1;
-        var selectedEnd = SelectedClimb?.EndIndex ?? -1;
-
-        return $"{count}:{altLen}:{speedLen}:{varioLen}:{t[0]}:{t[count - 1]}:{selectedBegin}:{selectedEnd}";
     }
 }

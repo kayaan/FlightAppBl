@@ -437,6 +437,73 @@ window.flightCharts = (function () {
         }, false);
     }
 
+    function updateAllClimbsOne(elementId, payload) {
+
+        const chart = instances[elementId];
+        if (!chart) return;
+
+        const seriesData = chart.__seriesData;
+        if (!seriesData || seriesData.length === 0)
+            return;
+
+        if (!payload.showAllClimbs) {
+            chart.setOption({
+                series: [{
+                    markLine: { data: [] }
+                }]
+            }, false);
+            return;
+        }
+
+        const colors = [
+            "#2563eb",
+            "#16a34a",
+            "#ea580c",
+            "#9333ea",
+            "#0891b2",
+            "#dc2626"
+        ];
+
+        const lines = [];
+
+        for (let i = 0; i < payload.begin.length; i++) {
+
+            const begin = payload.begin[i];
+            const end = payload.end[i];
+
+            const p1 = seriesData.find(p => p[2] === begin);
+            const p2 = seriesData.find(p => p[2] === end);
+
+            if (!p1 || !p2) continue;
+
+            const color = colors[i % colors.length];
+
+            lines.push(
+                { xAxis: p1[0], lineStyle: { color, type: "dashed", width: 1 } },
+                { xAxis: p2[0], lineStyle: { color, type: "dashed", width: 1 } }
+            );
+        }
+
+        chart.setOption({
+            series: [{
+                markLine: {
+                    silent: true,
+                    symbol: ["none", "none"],
+                    data: lines
+                }
+            }]
+        }, false);
+    }
+
+    function updateAllClimbs(altId, varioId, speedId, payload) {
+
+        updateAllClimbsOne(altId, payload);
+        updateAllClimbsOne(varioId, payload);
+        updateAllClimbsOne(speedId, payload);
+
+    }
+
+
     function updateSelectedClimb(altId, varioId, speedId, payload) {
         updateSelectedClimbOne(altId, payload);
         updateSelectedClimbOne(varioId, payload);
@@ -494,7 +561,8 @@ window.flightCharts = (function () {
         hideCursor,
         clearCursor,
         registerSelectionCallback,
-        clearSelectionCallback
+        clearSelectionCallback,
+        updateAllClimbs
     };
 
 })();
