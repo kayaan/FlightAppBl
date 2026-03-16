@@ -350,9 +350,9 @@ window.flightCharts = (function () {
                 left: 52,
                 right: 14,
                 top: 28,
-                bottom: 28
+                bottom: 40,
+                containLabel: true
             },
-
             title: {
                 text: title,
                 left: 12,
@@ -364,15 +364,92 @@ window.flightCharts = (function () {
                 }
             },
 
+
+
             tooltip: {
                 show: true,
                 trigger: "axis",
-                confine: true
-            },
+                confine: true,
+                axisPointer: {
+                    type: "line",
+                    snap: true,
+                    label: {
+                        show: false
+                    }
+                },
+                formatter: function (params) {
+                    if (!params || params.length === 0) return "";
 
-            xAxis: {
-                type: "value"
+                    const now = Date.now();
+                    const p = params[0];
+
+                    let trackIndex = null;
+
+                    if (Array.isArray(p.value) && p.value.length >= 3) {
+                        trackIndex = p.value[2];
+                    } else if (typeof p.dataIndex === "number") {
+                        trackIndex = p.dataIndex;
+                    }
+
+                    if (
+                        !suppressMapToChart &&
+                        trackIndex != null &&
+                        !Number.isNaN(trackIndex) &&
+                        trackIndex !== lastTrackIndex &&
+                        now - lastHoverUpdateMs >= hoverThrottleMs
+                    ) {
+                        lastHoverUpdateMs = now;
+                        lastTrackIndex = trackIndex;
+
+                        suppressChartToMap = true;
+                        try {
+                            moveMapCursorToTrackIndex(trackIndex);
+                        } finally {
+                            suppressChartToMap = false;
+                        }
+                    }
+
+                    const y = Array.isArray(p.value) ? p.value[1] : null;
+                    return formatValue(y, unit);
+                }
             },
+xAxis: {
+    type: "value",
+    min: "dataMin",
+    max: "dataMax",
+    axisLine: {
+        show: true
+    },
+    axisTick: {
+        show: true
+    },
+    axisLabel: {
+        show: true,
+        color: "#64748b",
+        hideOverlap: true,
+        formatter: function (value) {
+            const total = Math.max(0, Math.floor(value));
+            const h = Math.floor(total / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            const s = total % 60;
+
+            if (h > 0) {
+                return `${h}:${String(m).padStart(2, "0")}`;
+            }
+
+            return `${m}:${String(s).padStart(2, "0")}`;
+        }
+    },
+    axisPointer: {
+        show: true,
+        label: {
+            show: false
+        }
+    },
+    splitLine: {
+        show: false
+    }
+},
 
             yAxis: {
                 type: "value"
@@ -399,6 +476,30 @@ window.flightCharts = (function () {
         };
     }
 
+    function formatValue(value, unit) {
+        if (value == null || Number.isNaN(value)) return `— ${unit}`;
+
+        const decimals =
+            unit === "m" ? 0 :
+                unit === "km/h" ? 0 :
+                    1;
+
+        return `${Number(value).toFixed(decimals).replace(".", ",")} ${unit}`;
+    }
+
+    function formatTime(seconds) {
+        const total = Math.max(0, Math.floor(seconds));
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const s = total % 60;
+
+        if (h > 0) {
+            return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+
+        return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
     function renderOne(elementId, title, unit, xValues, yValues, extra) {
         const chart = ensureChart(elementId);
         if (!chart || !xValues || !yValues) return;
@@ -407,16 +508,6 @@ window.flightCharts = (function () {
         chart.__seriesData = series;
 
         chart.setOption(baseOption(title, unit, series, extra), true);
-
-        chart.dispatchAction({
-            type: "takeGlobalCursor",
-            key: "brush",
-            brushOption: {
-                brushType: "lineX",
-                brushMode: "single"
-            }
-        });
-
         requestAnimationFrame(() => chart.resize());
     }
 
