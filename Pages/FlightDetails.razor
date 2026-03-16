@@ -43,72 +43,104 @@
     }
     else
     {
-        <div class="flight-header">
-            <div class="flight-kpis-top">
-                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">@(SelectedClimb is null ? "Date / Time" : "Begin / End")</div>
 
-                    <div class="hero-kpi-value">
-                        @(SelectedClimb is null
+        @if (!showAllClimbs)
+        {
+            <div class="flight-header">
+                <div class="flight-kpis-top">
+                    <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
+                        <div class="hero-kpi-label">@(SelectedClimb is null ? "Date / Time" : "Begin / End")</div>
+
+                        <div class="hero-kpi-value">
+                            @(SelectedClimb is null
                             ? FormatDateTimeShort(displayedStats.StartTimeUtc)
                             : FormatSelectedClimbBeginEnd())
-                    </div>
+                        </div>
 
-                    <div class="hero-kpi-sub">
-                        @(SelectedClimb is null
+                        <div class="hero-kpi-sub">
+                            @(SelectedClimb is null
                             ? NullOrDash(flight.PilotId)
                             : "Relative flight time")
+                        </div>
                     </div>
-                </div>
 
-                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">Duration</div>
-                    <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
-                    <div class="hero-kpi-sub">@(SelectedClimb is null ? NullOrDash(flight.GliderId) : "Selected climb")
+                    <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
+                        <div class="hero-kpi-label">Duration</div>
+                        <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
+                        <div class="hero-kpi-sub">@(SelectedClimb is null ? NullOrDash(flight.GliderId) : "Selected climb")
+                        </div>
                     </div>
-                </div>
 
-                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">Distance</div>
-                    <div class="hero-kpi-value">@FormatDistanceKm(displayedStats.TotalDistanceMeters)</div>
-                    <div class="hero-kpi-sub">Fixes @displayedStats.FixCount</div>
-                </div>
-
-                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">Altitude</div>
-                    <div class="hero-kpi-value">@FormatAltitudeMinMaxPreferred(displayedStats)</div>
-                    <div class="hero-kpi-sub">Min / Max</div>
-                </div>
-
-                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">Vario</div>
-                    <div class="hero-kpi-value">@FormatVario(displayedStats, SelectedClimb)</div>
-                    <div class="hero-kpi-sub">@(SelectedClimb is null ? "Min / Max" : "Min / Max / Avg")</div>
-                </div>
-
-                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">Speed</div>
-                    <div class="hero-kpi-value">@FormatSpeedAvgMax(displayedStats)</div>
-                    <div class="hero-kpi-sub">Avg / Max</div>
-                </div>
-
-                <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">@(SelectedClimb is null ? "Takeoff / Landing Elevation" : "Gain")</div>
-                    <div class="hero-kpi-value">
-                        @if (SelectedClimb is null)
-                        {
-                            @($"{FormatAltitudeValue(GetTakeoffHeight(displayedStats))} /                    {FormatAltitudeValue(GetLandingHeight(displayedStats))}")
-                        }
-                        else
-                        {
-                            @FormatGain(SelectedClimb)
-                        }
+                    <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
+                        <div class="hero-kpi-label">Distance</div>
+                        <div class="hero-kpi-value">@FormatDistanceKm(displayedStats.TotalDistanceMeters)</div>
+                        <div class="hero-kpi-sub">Fixes @displayedStats.FixCount</div>
                     </div>
-                    <div class="hero-kpi-sub">@(SelectedClimb is null ? "m (start / land)" : "Net climb")</div>
+
+                    <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
+                        <div class="hero-kpi-label">Altitude</div>
+                        <div class="hero-kpi-value">@FormatAltitudeMinMaxPreferred(displayedStats)</div>
+                        <div class="hero-kpi-sub">Min / Max</div>
+                    </div>
+
+                    <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
+                        <div class="hero-kpi-label">Vario</div>
+                        <div class="hero-kpi-value">@FormatVario(displayedStats, SelectedClimb)</div>
+                        <div class="hero-kpi-sub">@(SelectedClimb is null ? "Min / Max" : "Min / Max / Avg")</div>
+                    </div>
+
+                    <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
+                        <div class="hero-kpi-label">Speed</div>
+                        <div class="hero-kpi-value">@FormatSpeedAvgMax(displayedStats)</div>
+                        <div class="hero-kpi-sub">Avg / Max</div>
+                    </div>
+
+                    <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
+                        <div class="hero-kpi-label">@(SelectedClimb is null ? "Takeoff / Landing Elevation" : "Gain")</div>
+                        <div class="hero-kpi-value">
+                            @if (SelectedClimb is null)
+                            {
+                                @($"{FormatAltitudeValue(GetTakeoffHeight(displayedStats))} /                    {FormatAltitudeValue(GetLandingHeight(displayedStats))}")
+                            }
+                            else
+                            {
+                                @FormatGain(SelectedClimb)
+                            }
+                        </div>
+                        <div class="hero-kpi-sub">@(SelectedClimb is null ? "m (start / land)" : "Net climb")</div>
+                    </div>
                 </div>
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="flight-kpis-top">
+                @foreach (var item in allClimbKpis)
+                {
+                    <div class="hero-kpi">
+                        <div class="hero-kpi-label">@item.Label</div>
 
+                        <div class="hero-kpi-value hero-kpi-minmax">
+                            <span class="hero-kpi-side-label">Max</span>
+
+                            <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MaxClimbIndex))">
+                                @item.MaxText
+                            </span>
+
+                            <span class="hero-kpi-separator">/</span>
+
+                            <span class="hero-kpi-side-label">Min</span>
+
+                            <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MinClimbIndex))">
+                                @item.MinText
+                            </span>
+                        </div>
+
+                        <div class="hero-kpi-sub">@item.SubText</div>
+                    </div>
+                }
+            </div>
+        }
         @if (climbSegments.Count > 0)
         {
             <div class="climb-nav-row">
@@ -189,21 +221,26 @@
     private double layoutLeft;
     private double layoutWidth;
 
+    private ClimbSummary? climbSummary;
+
+    private List<ClimbSummaryKpi> allClimbKpis = new();
+
     private DotNetObjectReference<FlightDetails>? dotNetRef;
 
+
     private ClimbSegment? SelectedClimb
-        => selectedClimbIndex.HasValue &&
-           selectedClimbIndex.Value >= 0 &&
-           selectedClimbIndex.Value < climbSegments.Count
-            ? climbSegments[selectedClimbIndex.Value]
-            : null;
+    => selectedClimbIndex.HasValue &&
+    selectedClimbIndex.Value >= 0 &&
+    selectedClimbIndex.Value < climbSegments.Count
+    ? climbSegments[selectedClimbIndex.Value]
+    : null;
 
     private bool CanSelectPreviousClimb
-        => selectedClimbIndex.HasValue && selectedClimbIndex.Value > 0;
+    => selectedClimbIndex.HasValue && selectedClimbIndex.Value > 0;
 
     private bool CanSelectNextClimb
-        => climbSegments.Count > 0 &&
-           (!selectedClimbIndex.HasValue || selectedClimbIndex.Value < climbSegments.Count - 1);
+    => climbSegments.Count > 0 &&
+    (!selectedClimbIndex.HasValue || selectedClimbIndex.Value < climbSegments.Count - 1);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -241,6 +278,7 @@
         climbSegments = new List<ClimbSegment>();
         selectedClimbIndex = null;
         showAllClimbs = false;
+        allClimbKpis = new List<ClimbSummaryKpi>();
 
         try
         {
@@ -258,6 +296,8 @@
             if (trackArrays is not null)
             {
                 climbSegments = ClimbDetector.DetectClimbs(trackArrays);
+                climbSummary = ComputeClimbSummary();
+                allClimbKpis = BuildAllClimbKpis();
             }
         }
         catch (Exception ex)
@@ -268,6 +308,79 @@
         {
             isLoading = false;
         }
+    }
+
+    /// <summary>
+    /// Computes min/max statistics across all climb segments.
+    /// </summary>
+    private ClimbSummary ComputeClimbSummary()
+    {
+        var summary = new ClimbSummary
+        {
+            Count = climbSegments.Count
+        };
+
+        for (int i = 0; i < climbSegments.Count; i++)
+        {
+            var climb = climbSegments[i];
+
+            var duration = climb.DurationSec;
+            var gain = climb.GainM;
+            var avgClimb = climb.AvgClimbRateMs;
+            var avgSpeed = climb.AvgSpeedKmh;
+            var maxSpeed = climb.MaxSpeedKmh;
+
+            if (summary.MaxDuration is null || duration > summary.MaxDuration.Value.value)
+                summary.MaxDuration = (duration, i);
+
+            if (summary.MinDuration is null || duration < summary.MinDuration.Value.value)
+                summary.MinDuration = (duration, i);
+
+            if (summary.MaxGain is null || gain > summary.MaxGain.Value.value)
+                summary.MaxGain = (gain, i);
+
+            if (summary.MinGain is null || gain < summary.MinGain.Value.value)
+                summary.MinGain = (gain, i);
+
+            if (summary.MaxAvgClimb is null || avgClimb > summary.MaxAvgClimb.Value.value)
+                summary.MaxAvgClimb = (avgClimb, i);
+
+            if (summary.MinAvgClimb is null || avgClimb < summary.MinAvgClimb.Value.value)
+                summary.MinAvgClimb = (avgClimb, i);
+
+            if (summary.MaxAvgSpeed is null || avgSpeed > summary.MaxAvgSpeed.Value.value)
+                summary.MaxAvgSpeed = (avgSpeed, i);
+
+            if (summary.MinAvgSpeed is null || avgSpeed < summary.MinAvgSpeed.Value.value)
+                summary.MinAvgSpeed = (avgSpeed, i);
+
+            if (summary.MaxSpeed is null || maxSpeed > summary.MaxSpeed.Value.value)
+                summary.MaxSpeed = (maxSpeed, i);
+
+
+
+            var selection = new SelectionRange(climb.BeginIndex, climb.EndIndex);
+            FlightStats? stats = trackArrays is not null
+                ? segmentStatsCalculator.Calculate(trackArrays, selection)
+                : null;
+
+            var maxClimb = stats?.MaxVarioMs;
+            var minClimb = stats?.MinVarioMs;
+
+            if (maxClimb.HasValue)
+            {
+                if (summary.MaxClimb is null || maxClimb.Value > summary.MaxClimb.Value.value)
+                    summary.MaxClimb = (maxClimb.Value, i);
+            }
+
+            if (minClimb.HasValue)
+            {
+                if (summary.MinClimb is null || minClimb.Value < summary.MinClimb.Value.value)
+                    summary.MinClimb = (minClimb.Value, i);
+            }
+        }
+
+        return summary;
     }
 
     private void ApplySelection(int startIndex, int endIndex)
@@ -332,7 +445,7 @@
     }
 
     private string GetLeftPaneStyle()
-        => $"flex: 0 0 {leftPanePercent}%;";
+    => $"flex: 0 0 {leftPanePercent}%;";
 
     private async Task StartResize(MouseEventArgs _)
     {
@@ -489,8 +602,124 @@
         return FormatDuration(displayedStats.Duration);
     }
 
+    /// <summary>
+    /// Formats a duration in seconds as h:mm:ss.
+    /// </summary>
+    private static string FormatDurationSeconds(double seconds)
+    {
+        return FormatClockFromSeconds(seconds);
+    }
+
+    /// <summary>
+    /// Formats a numeric value as meters without decimals.
+    /// </summary>
+    private static string FormatMeters(double value)
+    {
+        return $"{value:0} m";
+    }
+
+    /// <summary>
+    /// Formats a numeric value as meters per second with one decimal.
+    /// </summary>
+    private static string FormatMs(double value)
+    {
+        return $"{value:0.0} m/s";
+    }
+
+    /// <summary>
+    /// Formats a numeric value as kilometers per hour with one decimal.
+    /// </summary>
+    private static string FormatKmh(double value)
+    {
+        return $"{value:0.0} km/h";
+    }
+    /// <summary>
+    /// Builds compact KPI cards for the all-climbs mode.
+    /// Each card shows a max/min pair and allows clicking either side
+    /// to select the corresponding climb.
+    /// </summary>
+    private List<ClimbSummaryKpi> BuildAllClimbKpis()
+    {
+        var items = new List<ClimbSummaryKpi>();
+
+        if (climbSummary is null || climbSummary.Count == 0)
+            return items;
+
+        if (climbSummary.MaxDuration is { } maxDuration &&
+            climbSummary.MinDuration is { } minDuration)
+        {
+            items.Add(new ClimbSummaryKpi
+            {
+                Label = "Duration",
+                MaxText = FormatDurationSeconds(maxDuration.value),
+                MaxClimbIndex = maxDuration.index,
+                MinText = FormatDurationSeconds(minDuration.value),
+                MinClimbIndex = minDuration.index,
+                SubText = "Max / Min"
+            });
+        }
+
+        if (climbSummary.MaxGain is { } maxGain &&
+            climbSummary.MinGain is { } minGain)
+        {
+            items.Add(new ClimbSummaryKpi
+            {
+                Label = "Gain",
+                MaxText = FormatMeters(maxGain.value),
+                MaxClimbIndex = maxGain.index,
+                MinText = FormatMeters(minGain.value),
+                MinClimbIndex = minGain.index,
+                SubText = "Max / Min"
+            });
+        }
+
+        if (climbSummary.MaxAvgClimb is { } maxAvgClimb &&
+            climbSummary.MinAvgClimb is { } minAvgClimb)
+        {
+            items.Add(new ClimbSummaryKpi
+            {
+                Label = "Avg Climb",
+                MaxText = FormatMs(maxAvgClimb.value),
+                MaxClimbIndex = maxAvgClimb.index,
+                MinText = FormatMs(minAvgClimb.value),
+                MinClimbIndex = minAvgClimb.index,
+                SubText = "Max / Min"
+            });
+        }
+
+        if (climbSummary.MaxAvgSpeed is { } maxAvgSpeed &&
+            climbSummary.MinAvgSpeed is { } minAvgSpeed)
+        {
+            items.Add(new ClimbSummaryKpi
+            {
+                Label = "Avg Speed",
+                MaxText = FormatKmh(maxAvgSpeed.value),
+                MaxClimbIndex = maxAvgSpeed.index,
+                MinText = FormatKmh(minAvgSpeed.value),
+                MinClimbIndex = minAvgSpeed.index,
+                SubText = "Max / Min"
+            });
+        }
+
+        if (climbSummary.MaxClimb is { } maxClimb &&
+            climbSummary.MinClimb is { } minClimb)
+        {
+            items.Add(new ClimbSummaryKpi
+            {
+                Label = "Climb",
+                MaxText = FormatMs(maxClimb.value),
+                MaxClimbIndex = maxClimb.index,
+                MinText = FormatMs(minClimb.value),
+                MinClimbIndex = minClimb.index,
+                SubText = "Max / Min"
+            });
+        }
+
+        return items;
+    }
+
     private static string NullOrDash(string? value)
-        => string.IsNullOrWhiteSpace(value) ? "—" : value;
+    => string.IsNullOrWhiteSpace(value) ? "—" : value;
 
     private static string FormatDateTimeShort(DateTime? value)
     {
@@ -509,7 +738,7 @@
     }
 
     private static string FormatDistanceKm(double totalDistanceMeters)
-        => $"{totalDistanceMeters / 1000.0:0.0} km";
+    => $"{totalDistanceMeters / 1000.0:0.0} km";
 
     private static string FormatAltitudeValue(int? value)
     {
@@ -559,16 +788,16 @@
     }
 
     private static string FormatGain(ClimbSegment climb)
-        => $"{climb.GainM:0} m";
+    => $"{climb.GainM:0} m";
 
     private static int? GetTakeoffHeight(FlightStats stats)
-        => stats.AltBaroStart ?? stats.AltGpsStart;
+    => stats.AltBaroStart ?? stats.AltGpsStart;
 
     private static int? GetLandingHeight(FlightStats stats)
-        => stats.AltBaroEnd ?? stats.AltGpsEnd;
+    => stats.AltBaroEnd ?? stats.AltGpsEnd;
 
     private bool CanClear
-        => currentSelection is not null || selectedClimbIndex is not null || showAllClimbs;
+    => currentSelection is not null || selectedClimbIndex is not null || showAllClimbs;
 
     private bool showAllClimbs;
 

@@ -31,13 +31,19 @@
 }
 
 .flight-kpis-top {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 10px;
     margin-bottom: 14px;
 }
 
 .hero-kpi {
+    display: inline-flex;
+    flex-direction: column;
+    width: fit-content;
+    max-width: 100%;
+
     border: 1px solid #e5e7eb;
     border-radius: 14px;
     padding: 10px 12px;
@@ -390,61 +396,40 @@
     }
 }
 
-@media (max-width: 768px) {
-    .flight-details-page {
-        padding: 16px;
-    }
-
-    .flight-kpis-top {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .climb-nav-shell {
-        flex-wrap: wrap;
-        width: auto;
-        max-width: 100%;
-    }
-
-    .climb-info {
-        min-width: 140px;
-    }
+.flight-kpis-dimmed .hero-kpi {
+    opacity: 0.45;
+    transition: opacity 150ms ease;
 }
 
-@media (max-width: 560px) {
-    .flight-kpis-top {
-        grid-template-columns: 1fr;
-    }
+.hero-kpi-clickable {
+    cursor: pointer;
+    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
 
-    .climb-nav-shell {
-        gap: 6px;
-        padding: 8px;
-    }
+.hero-kpi-clickable:hover {
+    transform: translateY(-1px);
+}
 
-    .climb-info {
-        min-width: 120px;
-        padding: 0 6px;
-    }
+.hero-kpi-minmax {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+}
 
-    .climb-title {
-        font-size: 12px;
-    }
+.hero-kpi-side-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
 
-    .climb-sub {
-        font-size: 10px;
-    }
+.hero-kpi-separator {
+    color: #94a3b8;
+    margin: 0 0.1rem;
+}
 
-    .climb-btn,
-    .climb-btn-toggle,
-    .climb-btn-clear {
-        height: 28px;
-        min-width: 28px;
-        padding: 0 8px;
-        font-size: 12px;
-    }
-
-    .climb-btn-clear {
-        width: 28px;
-        min-width: 28px;
-        padding: 0;
-    }
+.hero-kpi-link {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
