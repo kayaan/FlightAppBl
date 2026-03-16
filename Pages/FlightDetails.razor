@@ -46,15 +46,26 @@
         <div class="flight-header">
             <div class="flight-kpis-top">
                 <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
-                    <div class="hero-kpi-label">Date / Time</div>
-                    <div class="hero-kpi-value">@FormatDateTimeShort(displayedStats.StartTimeUtc)</div>
-                    <div class="hero-kpi-sub">@NullOrDash(flight.PilotId)</div>
+                    <div class="hero-kpi-label">@(SelectedClimb is null ? "Date / Time" : "Begin / End")</div>
+
+                    <div class="hero-kpi-value">
+                        @(SelectedClimb is null
+                            ? FormatDateTimeShort(displayedStats.StartTimeUtc)
+                            : FormatSelectedClimbBeginEnd())
+                    </div>
+
+                    <div class="hero-kpi-sub">
+                        @(SelectedClimb is null
+                            ? NullOrDash(flight.PilotId)
+                            : "Relative flight time")
+                    </div>
                 </div>
 
                 <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                     <div class="hero-kpi-label">Duration</div>
-                    <div class="hero-kpi-value">@FormatDuration(displayedStats.Duration)</div>
-                    <div class="hero-kpi-sub">@NullOrDash(flight.GliderId)</div>
+                    <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
+                    <div class="hero-kpi-sub">@(SelectedClimb is null ? NullOrDash(flight.GliderId) : "Selected climb")
+                    </div>
                 </div>
 
                 <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
@@ -401,6 +412,81 @@
             return $"{climbSegments.Count} climbs detected";
 
         return $"{FormatGain(climb)} · {climb.AvgClimbRateMs:0.0} m/s";
+    }
+
+    /// <summary>
+    /// Returns the relative flight time in seconds for a given track index
+    /// using the precomputed TimeSec array.
+    /// </summary>
+    private int GetTrackTimeSeconds(int index)
+    {
+        if (trackArrays?.TimeSec is null || trackArrays.TimeSec.Length == 0)
+            return 0;
+
+        if (index < 0)
+            return 0;
+
+        if (index >= trackArrays.TimeSec.Length)
+            index = trackArrays.TimeSec.Length - 1;
+
+        return trackArrays.TimeSec[index];
+    }
+
+    /// <summary>
+    /// Converts a relative flight time in seconds into a readable clock format (h:mm:ss).
+    /// Example: 5077 -> "1:24:37".
+    /// Used for displaying climb begin/end times and climb duration.
+    /// </summary>
+    private static string FormatClockFromSeconds(double seconds)
+    {
+        var totalSeconds = Math.Max(0, (int)Math.Floor(seconds));
+        var hours = totalSeconds / 3600;
+        var minutes = (totalSeconds % 3600) / 60;
+        var secs = totalSeconds % 60;
+
+        return $"{hours}:{minutes:00}:{secs:00}";
+    }
+
+    /// <summary>
+    /// Returns a formatted "Begin / End" time string for the selected climb.
+    /// Times are read from the precomputed TimeSec array.
+    /// </summary>
+    private string FormatSelectedClimbBeginEnd()
+    {
+        var climb = SelectedClimb;
+
+        if (climb is null || trackArrays?.TimeSec is null)
+            return "— / —";
+
+        var begin = GetTrackTimeSeconds(climb.BeginIndex);
+        var end = GetTrackTimeSeconds(climb.EndIndex);
+
+        return $"{FormatClockFromSeconds(begin)} / {FormatClockFromSeconds(end)}";
+    }
+
+    /// <summary>
+    /// Returns the duration displayed in the Duration KPI.
+    /// If a climb is selected, the climb duration is calculated from TimeSec.
+    /// Otherwise the normal flight duration is used.
+    /// </summary>
+    private string FormatDisplayedDuration()
+    {
+        var climb = SelectedClimb;
+
+        if (climb is not null && trackArrays?.TimeSec is not null)
+        {
+            var begin = GetTrackTimeSeconds(climb.BeginIndex);
+            var end = GetTrackTimeSeconds(climb.EndIndex);
+
+            var durationSeconds = Math.Max(0, end - begin);
+
+            return FormatClockFromSeconds(durationSeconds);
+        }
+
+        if (displayedStats is null)
+            return "—";
+
+        return FormatDuration(displayedStats.Duration);
     }
 
     private static string NullOrDash(string? value)

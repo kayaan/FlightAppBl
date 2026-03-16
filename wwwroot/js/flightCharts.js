@@ -447,12 +447,13 @@ window.flightCharts = (function () {
                     show: true,
                     label: {
                         show: true,
+                        backgroundColor: "#1e293b",
+                        color: "#fff",
+                        borderRadius: 4,
+                        padding: [3, 6],
                         formatter: function (params) {
-                            const value = typeof params.value === "number"
-                                ? params.value
-                                : Number(params.value ?? 0);
-
-                            return formatTime(value);
+                            const seconds = Number(params.value || 0);
+                            return formatTime(seconds);
                         }
                     }
                 },

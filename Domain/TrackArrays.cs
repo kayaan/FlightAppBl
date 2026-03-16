@@ -1,9 +1,14 @@
 namespace FlightApp.Domain;
 
-
 public class TrackArrays
 {
     public int[] TDeltaMs { get; set; } = Array.Empty<int>();
+
+    /// <summary>
+    /// Relative flight time in whole seconds for each track point.
+    /// Value 0 means flight start.
+    /// </summary>
+    public int[] TimeSec { get; set; } = Array.Empty<int>();
 
     public int[] LatE7 { get; set; } = Array.Empty<int>();
     public int[] LonE7 { get; set; } = Array.Empty<int>();
