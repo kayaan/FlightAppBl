@@ -324,6 +324,12 @@ window.flightCharts = (function () {
     }
 
     function baseOption(title, unit, series, extra) {
+        const maxX = series && series.length > 0
+            ? series[series.length - 1][0]
+            : 0;
+
+        const timeInterval = getTimeAxisInterval(maxX);
+
         return {
             toolbox: {
                 show: false
@@ -363,8 +369,6 @@ window.flightCharts = (function () {
                     color: "#64748b"
                 }
             },
-
-
 
             tooltip: {
                 show: true,
@@ -413,43 +417,49 @@ window.flightCharts = (function () {
                     return formatValue(y, unit);
                 }
             },
-xAxis: {
-    type: "value",
-    min: "dataMin",
-    max: "dataMax",
-    axisLine: {
-        show: true
-    },
-    axisTick: {
-        show: true
-    },
-    axisLabel: {
-        show: true,
-        color: "#64748b",
-        hideOverlap: true,
-        formatter: function (value) {
-            const total = Math.max(0, Math.floor(value));
-            const h = Math.floor(total / 3600);
-            const m = Math.floor((total % 3600) / 60);
-            const s = total % 60;
 
-            if (h > 0) {
-                return `${h}:${String(m).padStart(2, "0")}`;
-            }
+            xAxis: {
+                type: "value",
+                min: 0,
+                max: function (value) {
+                    return Math.ceil(value.max / timeInterval) * timeInterval;
+                },
+                interval: timeInterval,
+                axisLine: {
+                    show: true
+                },
+                axisTick: {
+                    show: true
+                },
+                axisLabel: {
+                    show: true,
+                    color: "#64748b",
+                    hideOverlap: false,
+                    formatter: function (value) {
+                        const total = Math.max(0, Math.floor(value));
+                        const h = Math.floor(total / 3600);
+                        const m = Math.floor((total % 3600) / 60);
 
-            return `${m}:${String(s).padStart(2, "0")}`;
-        }
-    },
-    axisPointer: {
-        show: true,
-        label: {
-            show: false
-        }
-    },
-    splitLine: {
-        show: false
-    }
-},
+                        return `${h}:${String(m).padStart(2, "0")}`;
+                    }
+                },
+                axisPointer: {
+                    show: true,
+                    label: {
+                        show: true,
+                        formatter: function (params) {
+                            const value = typeof params.value === "number"
+                                ? params.value
+                                : Number(params.value ?? 0);
+
+                            return formatTime(value);
+                        }
+                    }
+                },
+                splitLine: {
+                    show: false
+                }
+            },
 
             yAxis: {
                 type: "value"
@@ -474,6 +484,12 @@ xAxis: {
                 }
             ]
         };
+    }
+
+    function getTimeAxisInterval(maxSeconds) {
+        if (maxSeconds <= 60 * 60) return 600;        // bis 1h -> 10 min
+        if (maxSeconds <= 3 * 60 * 60) return 1800;   // bis 3h -> 30 min
+        return 3600;                                  // darüber -> 60 min
     }
 
     function formatValue(value, unit) {
