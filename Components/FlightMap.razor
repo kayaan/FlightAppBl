@@ -26,6 +26,9 @@
     [Parameter]
     public string Height { get; set; } = "100%";
 
+    [Parameter]
+    public MapStyle MapStyle { get; set; } = MapStyle.Road;
+
     private readonly string mapId = $"flight-map-{Guid.NewGuid():N}";
     private string? lastRenderSignature;
     private bool disposed;
@@ -59,8 +62,9 @@
             "flightMapComponent.renderTrackArrays",
             mapId,
             Track!.LatE7,
-            Track.LonE7, 
-            Track.VarioCms);
+            Track.LonE7,
+            Track.VarioCms,
+            MapStyle.ToString().ToLowerInvariant());
 
         lastRenderSignature = signature;
     }
@@ -89,8 +93,8 @@
         var count = Math.Min(latE7.Length, lonE7.Length);
 
         if (count == 0)
-            return "0";
+            return $"0:{MapStyle}";
 
-        return $"{count}:{latE7[0]}:{lonE7[0]}:{latE7[count - 1]}:{lonE7[count - 1]}";
+        return $"{MapStyle}:{count}:{latE7[0]}:{lonE7[0]}:{latE7[count - 1]}:{lonE7[count - 1]}";
     }
 }

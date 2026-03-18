@@ -186,8 +186,23 @@
             </div>
 
             <div class="right-pane">
-                <FlightMap Track="state.TrackArrays" Height="100%" />
-            </div>
+                
+                <div class="map-style-toggle">
+                    <button class="map-toggle-btn @(state.MapStyle == MapStyle.Road ? "active" : null)"
+                            @onclick="@(() => state.MapStyle = MapStyle.Road)">
+                        Road
+                    </button>
+
+                    <button class="map-toggle-btn @(state.MapStyle == MapStyle.Topo ? "active" : null)"
+                            @onclick="@(() => state.MapStyle = MapStyle.Topo)">
+                        Topo
+                    </button>
+                </div>
+
+                <FlightMap Track="state.TrackArrays"
+                        Height="100%"
+                        MapStyle="state.MapStyle" />
+            </div> 
         </div>
 
         @if (state.IsResizing)

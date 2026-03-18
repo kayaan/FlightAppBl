@@ -40,6 +40,13 @@ public sealed class FlightDetailsState
 
 
     // =========================================================
+    // MAP STATE (Basemap / map UI options)
+    // =========================================================
+
+    public MapStyle MapStyle { get; set; } = MapStyle.Topo;
+
+
+    // =========================================================
     // UI STATE (Loading, errors)
     // =========================================================
 

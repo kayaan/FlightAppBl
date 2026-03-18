@@ -1,6 +1,44 @@
 window.flightMapComponent = window.flightMapComponent || (function () {
     const instances = {};
 
+    function createRoadLayer() {
+        return L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap"
+        });
+    }
+
+    function createTopoLayer() {
+        return L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+            maxZoom: 17,
+            attribution: "&copy; OpenTopoMap, OpenStreetMap contributors"
+        });
+    }
+
+    function setBaseLayer(instance, mapStyle) {
+        const nextBaseLayer = mapStyle === "topo" ? "topo" : "road";
+
+        if (instance.activeBaseLayer === nextBaseLayer) {
+            return;
+        }
+
+        if (instance.activeBaseLayer === "road" && instance.roadLayer) {
+            instance.map.removeLayer(instance.roadLayer);
+        }
+
+        if (instance.activeBaseLayer === "topo" && instance.topoLayer) {
+            instance.map.removeLayer(instance.topoLayer);
+        }
+
+        if (nextBaseLayer === "road") {
+            instance.roadLayer.addTo(instance.map);
+        } else {
+            instance.topoLayer.addTo(instance.map);
+        }
+
+        instance.activeBaseLayer = nextBaseLayer;
+    }
+
     function ensureMap(elementId) {
         const el = document.getElementById(elementId);
         if (!el) return null;
@@ -13,15 +51,16 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             preferCanvas: true
         });
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            maxZoom: 19,
-            attribution: "&copy; OpenStreetMap"
-        }).addTo(map);
+        const roadLayer = createRoadLayer();
+        const topoLayer = createTopoLayer();
 
-
+        roadLayer.addTo(map);
 
         instance = {
             map,
+            roadLayer,
+            topoLayer,
+            activeBaseLayer: "road",
             trackLayer: null,
             startMarker: null,
             endMarker: null,
@@ -40,11 +79,9 @@ window.flightMapComponent = window.flightMapComponent || (function () {
     }
 
     function createVarioLegend() {
-
         const legend = L.control({ position: "bottomright" });
 
         legend.onAdd = function () {
-
             const div = L.DomUtil.create("div", "flight-vario-legend");
 
             div.innerHTML = `
@@ -116,27 +153,21 @@ window.flightMapComponent = window.flightMapComponent || (function () {
     }
 
     function getTrackColorByVario(varioCms) {
-
         const v = varioCms * 0.01;
 
-        // ++ strong climb
         if (v > 1.5)
-            return "#b30000";   // dark red
+            return "#b30000";
 
-        // + climb
         if (v > 0.3)
-            return "#ff3030";   // bright red
+            return "#ff3030";
 
-        // 0 neutral
         if (v >= -0.3)
-            return "#9ca3af";   // gray
+            return "#9ca3af";
 
-        // - sink
         if (v >= -1.5)
-            return "#2a62ff";   // blue
+            return "#2a62ff";
 
-        // -- strong sink
-        return "#0038d9";       // dark blue
+        return "#0038d9";
     }
 
     function buildColoredTrackSegments(latE7, lonE7, varioCms) {
@@ -206,9 +237,11 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         return bestIndex;
     }
 
-    function renderTrackArrays(elementId, latE7, lonE7, varioCms) {
+    function renderTrackArrays(elementId, latE7, lonE7, varioCms, mapStyle) {
         const instance = ensureMap(elementId);
         if (!instance) return;
+
+        setBaseLayer(instance, mapStyle);
 
         clear(elementId);
 
