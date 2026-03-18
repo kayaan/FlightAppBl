@@ -54,13 +54,13 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         const roadLayer = createRoadLayer();
         const topoLayer = createTopoLayer();
 
-        roadLayer.addTo(map);
+        topoLayer.addTo(map);
 
         instance = {
             map,
             roadLayer,
             topoLayer,
-            activeBaseLayer: "road",
+            activeBaseLayer: "topo",
             trackLayer: null,
             startMarker: null,
             endMarker: null,
