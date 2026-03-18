@@ -53,13 +53,13 @@
 
                         <div class="hero-kpi-value">
                             @(SelectedClimb is null
-                            ? FormatDateTimeShort(displayedStats.StartTimeUtc)
+                            ? FlightDetailsFormatters.FormatDateTimeShort(displayedStats.StartTimeUtc)
                             : FormatSelectedClimbBeginEnd())
                         </div>
 
                         <div class="hero-kpi-sub">
                             @(SelectedClimb is null
-                            ? NullOrDash(flight.PilotId)
+                            ? FlightDetailsFormatters.NullOrDash(flight.PilotId)
                             : "Relative flight time")
                         </div>
                     </div>
@@ -67,31 +67,31 @@
                     <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                         <div class="hero-kpi-label">Duration</div>
                         <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
-                        <div class="hero-kpi-sub">@(SelectedClimb is null ? NullOrDash(flight.GliderId) : "Selected climb")
+                        <div class="hero-kpi-sub">@(SelectedClimb is null ? FlightDetailsFormatters.NullOrDash(flight.GliderId) : "Selected climb")
                         </div>
                     </div>
 
                     <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                         <div class="hero-kpi-label">Distance</div>
-                        <div class="hero-kpi-value">@FormatDistanceKm(displayedStats.TotalDistanceMeters)</div>
+                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatDistanceKm(displayedStats.TotalDistanceMeters)</div>
                         <div class="hero-kpi-sub">Fixes @displayedStats.FixCount</div>
                     </div>
 
                     <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                         <div class="hero-kpi-label">Altitude</div>
-                        <div class="hero-kpi-value">@FormatAltitudeMinMaxPreferred(displayedStats)</div>
+                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatAltitudeMinMaxPreferred(displayedStats)</div>
                         <div class="hero-kpi-sub">Min / Max</div>
                     </div>
 
                     <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                         <div class="hero-kpi-label">Vario</div>
-                        <div class="hero-kpi-value">@FormatVario(displayedStats, SelectedClimb)</div>
+                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatVario(displayedStats, SelectedClimb)</div>
                         <div class="hero-kpi-sub">@(SelectedClimb is null ? "Min / Max" : "Min / Max / Avg")</div>
                     </div>
 
                     <div class="hero-kpi @(currentSelection != null ? "hero-kpi-selection" : null)">
                         <div class="hero-kpi-label">Speed</div>
-                        <div class="hero-kpi-value">@FormatSpeedAvgMax(displayedStats)</div>
+                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatSpeedAvgMax(displayedStats)</div>
                         <div class="hero-kpi-sub">Avg / Max</div>
                     </div>
 
@@ -100,11 +100,11 @@
                         <div class="hero-kpi-value">
                             @if (SelectedClimb is null)
                             {
-                                @($"{FormatAltitudeValue(GetTakeoffHeight(displayedStats))} /                    {FormatAltitudeValue(GetLandingHeight(displayedStats))}")
+                                @($"{FlightDetailsFormatters.FormatAltitudeValue(GetTakeoffHeight(displayedStats))} /                    {FlightDetailsFormatters.FormatAltitudeValue(GetLandingHeight(displayedStats))}")
                             }
                             else
                             {
-                                @FormatGain(SelectedClimb)
+                                @FlightDetailsFormatters.FormatGain(SelectedClimb)
                             }
                         </div>
                         <div class="hero-kpi-sub">@(SelectedClimb is null ? "m (start / land)" : "Net climb")</div>
@@ -445,7 +445,7 @@
     }
 
     private string GetLeftPaneStyle()
-    => $"flex: 0 0 {leftPanePercent}%;";
+    => $"flex: 0 0 {leftPanePercent}%";
 
     private async Task StartResize(MouseEventArgs _)
     {
@@ -524,7 +524,7 @@
         if (climb is null)
             return $"{climbSegments.Count} climbs detected";
 
-        return $"{FormatGain(climb)} · {climb.AvgClimbRateMs:0.0} m/s";
+        return $"{FlightDetailsFormatters.FormatGain(climb)} · {climb.AvgClimbRateMs:0.0} m/s";
     }
 
     /// <summary>
@@ -546,21 +546,6 @@
     }
 
     /// <summary>
-    /// Converts a relative flight time in seconds into a readable clock format (h:mm:ss).
-    /// Example: 5077 -> "1:24:37".
-    /// Used for displaying climb begin/end times and climb duration.
-    /// </summary>
-    private static string FormatClockFromSeconds(double seconds)
-    {
-        var totalSeconds = Math.Max(0, (int)Math.Floor(seconds));
-        var hours = totalSeconds / 3600;
-        var minutes = (totalSeconds % 3600) / 60;
-        var secs = totalSeconds % 60;
-
-        return $"{hours}:{minutes:00}:{secs:00}";
-    }
-
-    /// <summary>
     /// Returns a formatted "Begin / End" time string for the selected climb.
     /// Times are read from the precomputed TimeSec array.
     /// </summary>
@@ -574,7 +559,7 @@
         var begin = GetTrackTimeSeconds(climb.BeginIndex);
         var end = GetTrackTimeSeconds(climb.EndIndex);
 
-        return $"{FormatClockFromSeconds(begin)} / {FormatClockFromSeconds(end)}";
+        return $"{FlightDetailsFormatters.FormatClockFromSeconds(begin)} / {FlightDetailsFormatters.FormatClockFromSeconds(end)}";
     }
 
     /// <summary>
@@ -593,46 +578,15 @@
 
             var durationSeconds = Math.Max(0, end - begin);
 
-            return FormatClockFromSeconds(durationSeconds);
+            return FlightDetailsFormatters.FormatClockFromSeconds(durationSeconds);
         }
 
         if (displayedStats is null)
             return "—";
 
-        return FormatDuration(displayedStats.Duration);
+        return FlightDetailsFormatters.FormatDuration(displayedStats.Duration);
     }
 
-    /// <summary>
-    /// Formats a duration in seconds as h:mm:ss.
-    /// </summary>
-    private static string FormatDurationSeconds(double seconds)
-    {
-        return FormatClockFromSeconds(seconds);
-    }
-
-    /// <summary>
-    /// Formats a numeric value as meters without decimals.
-    /// </summary>
-    private static string FormatMeters(double value)
-    {
-        return $"{value:0} m";
-    }
-
-    /// <summary>
-    /// Formats a numeric value as meters per second with one decimal.
-    /// </summary>
-    private static string FormatMs(double value)
-    {
-        return $"{value:0.0} m/s";
-    }
-
-    /// <summary>
-    /// Formats a numeric value as kilometers per hour with one decimal.
-    /// </summary>
-    private static string FormatKmh(double value)
-    {
-        return $"{value:0.0} km/h";
-    }
     /// <summary>
     /// Builds compact KPI cards for the all-climbs mode.
     /// Each card shows a max/min pair and allows clicking either side
@@ -651,9 +605,9 @@
             items.Add(new ClimbSummaryKpi
             {
                 Label = "Duration",
-                MaxText = FormatDurationSeconds(maxDuration.value),
+                MaxText = FlightDetailsFormatters.FormatDurationSeconds(maxDuration.value),
                 MaxClimbIndex = maxDuration.index,
-                MinText = FormatDurationSeconds(minDuration.value),
+                MinText = FlightDetailsFormatters.FormatDurationSeconds(minDuration.value),
                 MinClimbIndex = minDuration.index,
                 SubText = "Max / Min"
             });
@@ -665,9 +619,9 @@
             items.Add(new ClimbSummaryKpi
             {
                 Label = "Gain",
-                MaxText = FormatMeters(maxGain.value),
+                MaxText = FlightDetailsFormatters.FormatMeters(maxGain.value),
                 MaxClimbIndex = maxGain.index,
-                MinText = FormatMeters(minGain.value),
+                MinText = FlightDetailsFormatters.FormatMeters(minGain.value),
                 MinClimbIndex = minGain.index,
                 SubText = "Max / Min"
             });
@@ -679,9 +633,9 @@
             items.Add(new ClimbSummaryKpi
             {
                 Label = "Avg Climb",
-                MaxText = FormatMs(maxAvgClimb.value),
+                MaxText = FlightDetailsFormatters.FormatMs(maxAvgClimb.value),
                 MaxClimbIndex = maxAvgClimb.index,
-                MinText = FormatMs(minAvgClimb.value),
+                MinText = FlightDetailsFormatters.FormatMs(minAvgClimb.value),
                 MinClimbIndex = minAvgClimb.index,
                 SubText = "Max / Min"
             });
@@ -693,9 +647,9 @@
             items.Add(new ClimbSummaryKpi
             {
                 Label = "Avg Speed",
-                MaxText = FormatKmh(maxAvgSpeed.value),
+                MaxText = FlightDetailsFormatters.FormatKmh(maxAvgSpeed.value),
                 MaxClimbIndex = maxAvgSpeed.index,
-                MinText = FormatKmh(minAvgSpeed.value),
+                MinText = FlightDetailsFormatters.FormatKmh(minAvgSpeed.value),
                 MinClimbIndex = minAvgSpeed.index,
                 SubText = "Max / Min"
             });
@@ -707,9 +661,9 @@
             items.Add(new ClimbSummaryKpi
             {
                 Label = "Climb",
-                MaxText = FormatMs(maxClimb.value),
+                MaxText = FlightDetailsFormatters.FormatMs(maxClimb.value),
                 MaxClimbIndex = maxClimb.index,
-                MinText = FormatMs(minClimb.value),
+                MinText = FlightDetailsFormatters.FormatMs(minClimb.value),
                 MinClimbIndex = minClimb.index,
                 SubText = "Max / Min"
             });
@@ -717,78 +671,6 @@
 
         return items;
     }
-
-    private static string NullOrDash(string? value)
-    => string.IsNullOrWhiteSpace(value) ? "—" : value;
-
-    private static string FormatDateTimeShort(DateTime? value)
-    {
-        if (!value.HasValue)
-            return "—";
-
-        return value.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm");
-    }
-
-    private static string FormatDuration(TimeSpan duration)
-    {
-        if (duration.TotalHours >= 1)
-            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
-
-        return $"{duration.Minutes}m";
-    }
-
-    private static string FormatDistanceKm(double totalDistanceMeters)
-    => $"{totalDistanceMeters / 1000.0:0.0} km";
-
-    private static string FormatAltitudeValue(int? value)
-    {
-        if (!value.HasValue)
-            return "—";
-
-        return $"{value.Value} m";
-    }
-
-    private static string FormatAltitudeMinMaxPreferred(FlightStats stats)
-    {
-        var min = stats.AltBaroMin ?? stats.AltGpsMin;
-        var max = stats.AltBaroMax ?? stats.AltGpsMax;
-
-        if (!min.HasValue && !max.HasValue)
-            return "—";
-
-        var minText = min.HasValue ? $"{min.Value}" : "—";
-        var maxText = max.HasValue ? $"{max.Value}" : "—";
-
-        return $"{minText} / {maxText} m";
-    }
-
-    private static string FormatVario(FlightStats stats, ClimbSegment? climb)
-    {
-        var min = stats.MinVarioMs;
-        var max = stats.MaxVarioMs;
-
-        if (!min.HasValue && !max.HasValue)
-            return climb is null ? "—" : $"{climb.AvgClimbRateMs:0.0} m/s";
-
-        var minText = min.HasValue ? $"{min.Value:0.0}" : "—";
-        var maxText = max.HasValue ? $"{max.Value:0.0}" : "—";
-
-        if (climb is null)
-            return $"{minText} / {maxText} m/s";
-
-        return $"{minText} / {maxText} / {climb.AvgClimbRateMs:0.0} m/s";
-    }
-
-    private static string FormatSpeedAvgMax(FlightStats stats)
-    {
-        var avgText = stats.AvgGroundSpeedKmh.HasValue ? $"{stats.AvgGroundSpeedKmh.Value:0.0}" : "—";
-        var maxText = stats.MaxGroundSpeedKmh.HasValue ? $"{stats.MaxGroundSpeedKmh.Value:0.0}" : "—";
-
-        return $"{avgText} / {maxText} km/h";
-    }
-
-    private static string FormatGain(ClimbSegment climb)
-    => $"{climb.GainM:0} m";
 
     private static int? GetTakeoffHeight(FlightStats stats)
     => stats.AltBaroStart ?? stats.AltGpsStart;
