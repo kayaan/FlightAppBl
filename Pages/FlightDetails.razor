@@ -11,6 +11,9 @@
 @implements IAsyncDisposable
 
 @inject FlightService FlightService
+
+@inject FlightDetailsLoadService FlightDetailsLoadService
+
 @inject IJSRuntime JS
 
 <div class="flight-details-page">
@@ -67,150 +70,152 @@
                     <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
                         <div class="hero-kpi-label">Duration</div>
                         <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
-                        <div class="hero-kpi-sub">@(SelectedClimb is null ? FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
+                        <div class="hero-kpi-sub">@(SelectedClimb is null ?
+                                                                                                                                    FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
                         </div>
                     </div>
 
                     <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
                         <div class="hero-kpi-label">Distance</div>
-                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatDistanceKm(state.DisplayedStats.TotalDistanceMeters)</div>
-                        <div class="hero-kpi-sub">Fixes @state.DisplayedStats.FixCount</div>
-                    </div>
-
-                    <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
-                        <div class="hero-kpi-label">Altitude</div>
-                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatAltitudeMinMaxPreferred(state.DisplayedStats)</div>
-                        <div class="hero-kpi-sub">Min / Max</div>
-                    </div>
-
-                    <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
-                        <div class="hero-kpi-label">Vario</div>
-                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatVario(state.DisplayedStats, SelectedClimb)</div>
-                        <div class="hero-kpi-sub">@(SelectedClimb is null ? "Min / Max" : "Min / Max / Avg")</div>
-                    </div>
-
-                    <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
-                        <div class="hero-kpi-label">Speed</div>
-                        <div class="hero-kpi-value">@FlightDetailsFormatters.FormatSpeedAvgMax(state.DisplayedStats)</div>
-                        <div class="hero-kpi-sub">Avg / Max</div>
-                    </div>
-
-                    <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
-                        <div class="hero-kpi-label">@(SelectedClimb is null ? "Takeoff / Landing Elevation" : "Gain")</div>
                         <div class="hero-kpi-value">
-                            @if (SelectedClimb is null)
-                            {
-                                @($"{FlightDetailsFormatters.FormatAltitudeValue(GetTakeoffHeight(state.DisplayedStats))} /                    {FlightDetailsFormatters.FormatAltitudeValue(GetLandingHeight(state.DisplayedStats))}")
-                            }
-                            else
-                            {
-                                @FlightDetailsFormatters.FormatGain(SelectedClimb)
-                            }
-                        </div>
-                        <div class="hero-kpi-sub">@(SelectedClimb is null ? "m (start / land)" : "Net climb")</div>
-                    </div>
-                </div>
-            </div>
-        }
-        else
-        {
-            <div class="flight-kpis-top">
-                @foreach (var item in state.AllClimbKpis)
-                {
-                    <div class="hero-kpi">
-                        <div class="hero-kpi-label">@item.Label</div>
-
-                        <div class="hero-kpi-value hero-kpi-minmax">
-                            <span class="hero-kpi-side-label">Max</span>
-
-                            <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MaxClimbIndex))">
-                                @item.MaxText
-                            </span>
-
-                            <span class="hero-kpi-separator">/</span>
-
-                            <span class="hero-kpi-side-label">Min</span>
-
-                            <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MinClimbIndex))">
-                                @item.MinText
-                            </span>
+                            @FlightDetailsFormatters.FormatDistanceKm(state.DisplayedStats.TotalDistanceMeters)</div>
+                            <div class="hero-kpi-sub">Fixes @state.DisplayedStats.FixCount</div>
                         </div>
 
-                        <div class="hero-kpi-sub">@item.SubText</div>
+                        <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
+                            <div class="hero-kpi-label">Altitude</div>
+                            <div class="hero-kpi-value">@FlightDetailsFormatters.FormatAltitudeMinMaxPreferred(state.DisplayedStats)
+                            </div>
+                            <div class="hero-kpi-sub">Min / Max</div>
+                        </div>
+
+                        <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
+                            <div class="hero-kpi-label">Vario</div>
+                            <div class="hero-kpi-value">@FlightDetailsFormatters.FormatVario(state.DisplayedStats, SelectedClimb)
+                            </div>
+                            <div class="hero-kpi-sub">@(SelectedClimb is null ? "Min / Max" : "Min / Max / Avg")</div>
+                        </div>
+
+                        <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
+                            <div class="hero-kpi-label">Speed</div>
+                            <div class="hero-kpi-value">@FlightDetailsFormatters.FormatSpeedAvgMax(state.DisplayedStats)</div>
+                            <div class="hero-kpi-sub">Avg / Max</div>
+                        </div>
+
+                        <div class="hero-kpi @(state.CurrentSelection != null ? "hero-kpi-selection" : null)">
+                            <div class="hero-kpi-label">@(SelectedClimb is null ? "Takeoff / Landing Elevation" : "Gain")</div>
+                            <div class="hero-kpi-value">
+                                @if (SelectedClimb is null)
+                                {
+                                    @($"{FlightDetailsFormatters.FormatAltitudeValue(GetTakeoffHeight(state.DisplayedStats))} /                    {FlightDetailsFormatters.FormatAltitudeValue(GetLandingHeight(state.DisplayedStats))}")
+                                }
+                                else
+                                {
+                                    @FlightDetailsFormatters.FormatGain(SelectedClimb)
+                                }
+                            </div>
+                            <div class="hero-kpi-sub">@(SelectedClimb is null ? "m (start / land)" : "Net climb")</div>
+                        </div>
                     </div>
-                }
-            </div>
-        }
-        @if (state.ClimbSegments.Count > 0)
-        {
-            <div class="climb-nav-row">
-                <div class="climb-nav-shell">
+                </div>
+            }
+    else
+            {
+                <div class="flight-kpis-top">
+                    @foreach (var item in state.AllClimbKpis)
+                    {
+                        <div class="hero-kpi">
+                            <div class="hero-kpi-label">@item.Label</div>
 
-                    <button type="button" class="climb-btn" title="Previous climb" @onclick="SelectPreviousClimb"
-                            disabled="@(!CanSelectPreviousClimb)">
-                        ◀
-                    </button>
+                            <div class="hero-kpi-value hero-kpi-minmax">
+                                <span class="hero-kpi-side-label">Max</span>
 
-                    <div class="climb-info">
-                        <div class="climb-title">@GetClimbNavigatorTitle()</div>
-                        <div class="climb-sub">@GetClimbNavigatorSubtitle()</div>
+                                <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MaxClimbIndex))">
+                                    @item.MaxText
+                                </span>
+
+                                <span class="hero-kpi-separator">/</span>
+
+                                <span class="hero-kpi-side-label">Min</span>
+
+                                <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MinClimbIndex))">
+                                    @item.MinText
+                                </span>
+                            </div>
+
+                            <div class="hero-kpi-sub">@item.SubText</div>
+                        </div>
+                    }
+                </div>
+            }
+            @if (state.ClimbSegments.Count > 0)
+            {
+                <div class="climb-nav-row">
+                    <div class="climb-nav-shell">
+
+                        <button type="button" class="climb-btn" title="Previous climb" @onclick="SelectPreviousClimb"
+                                disabled="@(!CanSelectPreviousClimb)">
+                            ◀
+                        </button>
+
+                        <div class="climb-info">
+                            <div class="climb-title">@GetClimbNavigatorTitle()</div>
+                            <div class="climb-sub">@GetClimbNavigatorSubtitle()</div>
+                        </div>
+
+                        <button type="button" class="climb-btn climb-btn-primary" title="Next climb" @onclick="SelectNextClimb"
+                                disabled="@(!CanSelectNextClimb)">
+                            ▶
+                        </button>
+
+                        <button type="button" class="climb-btn-clear" title="Clear selection" @onclick="ClearSelection"
+                                disabled="@(!CanClear)">
+                            ✕
+                        </button>
+
+                        <button type="button" class="climb-btn-toggle @(state.ShowAllClimbs ? "climb-btn-toggle-active" : null)"
+                                title="Show all climbs" @onclick="ToggleShowAllClimbs">
+                            All
+                        </button>
+
+                    </div>
+                </div>
+            }
+
+            <div class="flight-layout" @ref="state.FlightLayoutRef">
+                <div class="left-pane" style="@GetLeftPaneStyle()">
+                    <FlightCharts Track="state.TrackArrays" SelectedClimb="SelectedClimb" ClimbSegments="state.ClimbSegments"
+                                  ShowAllClimbs="state.ShowAllClimbs" />
+                </div>
+
+                <div class="splitter @(state.IsResizing ? "splitter-active" : null)" @onmousedown="StartResize"
+                     @onmousedown:preventDefault="true" aria-label="Resize panels" role="separator">
+                </div>
+
+                <div class="right-pane">
+
+                    <div class="map-style-toggle">
+                        <button class="map-toggle-btn @(state.MapStyle == MapStyle.Road ? "active" : null)"
+                                @onclick="@(() => state.MapStyle = MapStyle.Road)">
+                            Road
+                        </button>
+
+                        <button class="map-toggle-btn @(state.MapStyle == MapStyle.Topo ? "active" : null)"
+                                @onclick="@(() => state.MapStyle = MapStyle.Topo)">
+                            Topo
+                        </button>
                     </div>
 
-                    <button type="button" class="climb-btn climb-btn-primary" title="Next climb" @onclick="SelectNextClimb"
-                            disabled="@(!CanSelectNextClimb)">
-                        ▶
-                    </button>
-
-                    <button type="button" class="climb-btn-clear" title="Clear selection" @onclick="ClearSelection"
-                            disabled="@(!CanClear)">
-                        ✕
-                    </button>
-
-                    <button type="button" class="climb-btn-toggle @(state.ShowAllClimbs ? "climb-btn-toggle-active" : null)"
-                            title="Show all climbs" @onclick="ToggleShowAllClimbs">
-                        All
-                    </button>
-
+                    <FlightMap Track="state.TrackArrays" Height="100%" MapStyle="state.MapStyle" />
                 </div>
             </div>
+
+            @if (state.IsResizing)
+            {
+                <div class="resize-overlay"></div>
+            }
         }
-
-        <div class="flight-layout" @ref="state.FlightLayoutRef">
-            <div class="left-pane" style="@GetLeftPaneStyle()">
-                <FlightCharts Track="state.TrackArrays" SelectedClimb="SelectedClimb" ClimbSegments="state.ClimbSegments"
-                              ShowAllClimbs="state.ShowAllClimbs" />
-            </div>
-
-            <div class="splitter @(state.IsResizing ? "splitter-active" : null)" @onmousedown="StartResize"
-                 @onmousedown:preventDefault="true" aria-label="Resize panels" role="separator">
-            </div>
-
-            <div class="right-pane">
-                
-                <div class="map-style-toggle">
-                    <button class="map-toggle-btn @(state.MapStyle == MapStyle.Road ? "active" : null)"
-                            @onclick="@(() => state.MapStyle = MapStyle.Road)">
-                        Road
-                    </button>
-
-                    <button class="map-toggle-btn @(state.MapStyle == MapStyle.Topo ? "active" : null)"
-                            @onclick="@(() => state.MapStyle = MapStyle.Topo)">
-                        Topo
-                    </button>
-                </div>
-
-                <FlightMap Track="state.TrackArrays"
-                        Height="100%"
-                        MapStyle="state.MapStyle" />
-            </div> 
-        </div>
-
-        @if (state.IsResizing)
-        {
-            <div class="resize-overlay"></div>
-        }
-    }
-</div>
+    </div>
 
 @code {
     [Parameter]
@@ -273,6 +278,7 @@
         state.SelectedClimbIndex = null;
         state.ShowAllClimbs = false;
         state.AllClimbKpis = new List<ClimbSummaryKpi>();
+        state.ClimbSummary = null;
 
         try
         {
@@ -282,17 +288,14 @@
                 return;
             }
 
-            state.Flight = await FlightService.GetFlightByIdAsync(Id);
-            state.TrackArrays = await FlightService.GetTrackAsync(Id);
+            var result = await FlightDetailsLoadService.LoadAsync(Id);
 
-            state.DisplayedStats = state.Flight?.Stats;
-
-            if (state.TrackArrays is not null)
-            {
-                state.ClimbSegments = ClimbDetector.DetectClimbs(state.TrackArrays);
-                state.ClimbSummary = ComputeClimbSummary();
-                state.AllClimbKpis = BuildAllClimbKpis();
-            }
+            state.Flight = result.Flight;
+            state.TrackArrays = result.TrackArrays;
+            state.DisplayedStats = result.DisplayedStats;
+            state.ClimbSegments = result.ClimbSegments;
+            state.ClimbSummary = result.ClimbSummary;
+            state.AllClimbKpis = result.AllClimbKpis;
         }
         catch (Exception ex)
         {
@@ -304,78 +307,6 @@
         }
     }
 
-    /// <summary>
-    /// Computes min/max statistics across all climb segments.
-    /// </summary>
-    private ClimbSummary ComputeClimbSummary()
-    {
-        var summary = new ClimbSummary
-        {
-            Count = state.ClimbSegments.Count
-        };
-
-        for (int i = 0; i < state.ClimbSegments.Count; i++)
-        {
-            var climb = state.ClimbSegments[i];
-
-            var duration = climb.DurationSec;
-            var gain = climb.GainM;
-            var avgClimb = climb.AvgClimbRateMs;
-            var avgSpeed = climb.AvgSpeedKmh;
-            var maxSpeed = climb.MaxSpeedKmh;
-
-            if (summary.MaxDuration is null || duration > summary.MaxDuration.Value.value)
-                summary.MaxDuration = (duration, i);
-
-            if (summary.MinDuration is null || duration < summary.MinDuration.Value.value)
-                summary.MinDuration = (duration, i);
-
-            if (summary.MaxGain is null || gain > summary.MaxGain.Value.value)
-                summary.MaxGain = (gain, i);
-
-            if (summary.MinGain is null || gain < summary.MinGain.Value.value)
-                summary.MinGain = (gain, i);
-
-            if (summary.MaxAvgClimb is null || avgClimb > summary.MaxAvgClimb.Value.value)
-                summary.MaxAvgClimb = (avgClimb, i);
-
-            if (summary.MinAvgClimb is null || avgClimb < summary.MinAvgClimb.Value.value)
-                summary.MinAvgClimb = (avgClimb, i);
-
-            if (summary.MaxAvgSpeed is null || avgSpeed > summary.MaxAvgSpeed.Value.value)
-                summary.MaxAvgSpeed = (avgSpeed, i);
-
-            if (summary.MinAvgSpeed is null || avgSpeed < summary.MinAvgSpeed.Value.value)
-                summary.MinAvgSpeed = (avgSpeed, i);
-
-            if (summary.MaxSpeed is null || maxSpeed > summary.MaxSpeed.Value.value)
-                summary.MaxSpeed = (maxSpeed, i);
-
-
-
-            var selection = new SelectionRange(climb.BeginIndex, climb.EndIndex);
-            FlightStats? stats = state.TrackArrays is not null
-                ? segmentStatsCalculator.Calculate(state.TrackArrays, selection)
-                : null;
-
-            var maxClimb = stats?.MaxVarioMs;
-            var minClimb = stats?.MinVarioMs;
-
-            if (maxClimb.HasValue)
-            {
-                if (summary.MaxClimb is null || maxClimb.Value > summary.MaxClimb.Value.value)
-                    summary.MaxClimb = (maxClimb.Value, i);
-            }
-
-            if (minClimb.HasValue)
-            {
-                if (summary.MinClimb is null || minClimb.Value < summary.MinClimb.Value.value)
-                    summary.MinClimb = (minClimb.Value, i);
-            }
-        }
-
-        return summary;
-    }
 
     private void ApplySelection(int startIndex, int endIndex)
     {
@@ -579,91 +510,6 @@
             return "—";
 
         return FlightDetailsFormatters.FormatDuration(state.DisplayedStats.Duration);
-    }
-
-    /// <summary>
-    /// Builds compact KPI cards for the all-climbs mode.
-    /// Each card shows a max/min pair and allows clicking either side
-    /// to select the corresponding climb.
-    /// </summary>
-    private List<ClimbSummaryKpi> BuildAllClimbKpis()
-    {
-        var items = new List<ClimbSummaryKpi>();
-
-        if (state.ClimbSummary is null || state.ClimbSummary.Count == 0)
-            return items;
-
-        if (state.ClimbSummary.MaxDuration is { } maxDuration &&
-            state.ClimbSummary.MinDuration is { } minDuration)
-        {
-            items.Add(new ClimbSummaryKpi
-            {
-                Label = "Duration",
-                MaxText = FlightDetailsFormatters.FormatDurationSeconds(maxDuration.value),
-                MaxClimbIndex = maxDuration.index,
-                MinText = FlightDetailsFormatters.FormatDurationSeconds(minDuration.value),
-                MinClimbIndex = minDuration.index,
-                SubText = "Max / Min"
-            });
-        }
-
-        if (state.ClimbSummary.MaxGain is { } maxGain &&
-            state.ClimbSummary.MinGain is { } minGain)
-        {
-            items.Add(new ClimbSummaryKpi
-            {
-                Label = "Gain",
-                MaxText = FlightDetailsFormatters.FormatMeters(maxGain.value),
-                MaxClimbIndex = maxGain.index,
-                MinText = FlightDetailsFormatters.FormatMeters(minGain.value),
-                MinClimbIndex = minGain.index,
-                SubText = "Max / Min"
-            });
-        }
-
-        if (state.ClimbSummary.MaxAvgClimb is { } maxAvgClimb &&
-            state.ClimbSummary.MinAvgClimb is { } minAvgClimb)
-        {
-            items.Add(new ClimbSummaryKpi
-            {
-                Label = "Avg Climb",
-                MaxText = FlightDetailsFormatters.FormatMs(maxAvgClimb.value),
-                MaxClimbIndex = maxAvgClimb.index,
-                MinText = FlightDetailsFormatters.FormatMs(minAvgClimb.value),
-                MinClimbIndex = minAvgClimb.index,
-                SubText = "Max / Min"
-            });
-        }
-
-        if (state.ClimbSummary.MaxAvgSpeed is { } maxAvgSpeed &&
-            state.ClimbSummary.MinAvgSpeed is { } minAvgSpeed)
-        {
-            items.Add(new ClimbSummaryKpi
-            {
-                Label = "Avg Speed",
-                MaxText = FlightDetailsFormatters.FormatKmh(maxAvgSpeed.value),
-                MaxClimbIndex = maxAvgSpeed.index,
-                MinText = FlightDetailsFormatters.FormatKmh(minAvgSpeed.value),
-                MinClimbIndex = minAvgSpeed.index,
-                SubText = "Max / Min"
-            });
-        }
-
-        if (state.ClimbSummary.MaxClimb is { } maxClimb &&
-            state.ClimbSummary.MinClimb is { } minClimb)
-        {
-            items.Add(new ClimbSummaryKpi
-            {
-                Label = "Climb",
-                MaxText = FlightDetailsFormatters.FormatMs(maxClimb.value),
-                MaxClimbIndex = maxClimb.index,
-                MinText = FlightDetailsFormatters.FormatMs(minClimb.value),
-                MinClimbIndex = minClimb.index,
-                SubText = "Max / Min"
-            });
-        }
-
-        return items;
     }
 
     private static int? GetTakeoffHeight(FlightStats stats)
