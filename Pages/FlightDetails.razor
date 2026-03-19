@@ -73,7 +73,7 @@
                         <div class="hero-kpi-label">Duration</div>
                         <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
                         <div class="hero-kpi-sub">@(SelectedClimb is null ?
-                                                                                                                                    FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
+                                                                                                                                                                                                                                                    FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
                         </div>
                     </div>
 
@@ -209,7 +209,10 @@
                         </button>
                     </div>
 
-                    <FlightMap Track="state.TrackArrays" Height="100%" MapStyle="state.MapStyle" />
+                    <FlightMap Track="state.TrackArrays" Height="100%" MapStyle="state.MapStyle" HoveredClimb="HoveredClimb"
+                               SelectedClimb="SelectedClimb" ClimbSegments="state.ClimbSegments" />
+
+
                 </div>
             </div>
 

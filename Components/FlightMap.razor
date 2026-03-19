@@ -1,5 +1,6 @@
 @namespace FlightApp.Components
 
+@using FlightApp.Analysis
 @using FlightApp.Domain
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
@@ -29,6 +30,17 @@
     [Parameter]
     public MapStyle MapStyle { get; set; } = MapStyle.Road;
 
+
+    [Parameter] public ClimbSegment? HoveredClimb { get; set; }
+    [Parameter] public ClimbSegment? SelectedClimb { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ClimbSegment>? ClimbSegments { get; set; }
+
+
+    private string? lastHoveredClimbSignature;
+    private string? lastSelectedClimbSignature;
+
     private readonly string mapId = $"flight-map-{Guid.NewGuid():N}";
     private string? lastRenderSignature;
     private bool disposed;
@@ -47,7 +59,10 @@
             if (lastRenderSignature is not null)
             {
                 await JS.InvokeVoidAsync("flightMapComponent.clear", mapId);
+
                 lastRenderSignature = null;
+                lastHoveredClimbSignature = null;
+                lastSelectedClimbSignature = null;
             }
 
             return;
@@ -55,18 +70,95 @@
 
         var signature = BuildRenderSignature();
 
-        if (signature == lastRenderSignature)
-            return;
+        if (signature != lastRenderSignature)
+        {
+            await JS.InvokeVoidAsync(
+                "flightMapComponent.renderTrackArrays",
+                mapId,
+                Track!.LatE7,
+                Track.LonE7,
+                Track.VarioCms,
+                MapStyle.ToString().ToLowerInvariant());
 
-        await JS.InvokeVoidAsync(
-            "flightMapComponent.renderTrackArrays",
-            mapId,
-            Track!.LatE7,
-            Track.LonE7,
-            Track.VarioCms,
-            MapStyle.ToString().ToLowerInvariant());
+            lastRenderSignature = signature;
+            lastHoveredClimbSignature = null;
+            lastSelectedClimbSignature = null;
+        }
 
-        lastRenderSignature = signature;
+        var hoveredSignature = BuildHoveredClimbSignature();
+
+        if (hoveredSignature != lastHoveredClimbSignature)
+        {
+            await JS.InvokeVoidAsync(
+                "flightMapComponent.updateHoveredClimb",
+                mapId,
+                BuildHoveredClimbPayload());
+
+            lastHoveredClimbSignature = hoveredSignature;
+        }
+
+        var selectedSignature = BuildSelectedClimbSignature();
+
+        if (selectedSignature != lastSelectedClimbSignature)
+        {
+            await JS.InvokeVoidAsync(
+                "flightMapComponent.updateSelectedClimb",
+                mapId,
+                BuildSelectedClimbPayload());
+
+            lastSelectedClimbSignature = selectedSignature;
+        }
+    }
+    private HoveredClimbMapPayload BuildHoveredClimbPayload()
+    {
+        if (HoveredClimb is null || ClimbSegments is null)
+            return new HoveredClimbMapPayload();
+
+        var climbIndex = -1;
+
+        for (int i = 0; i < ClimbSegments.Count; i++)
+        {
+            var climb = ClimbSegments[i];
+
+            if (climb.BeginIndex == HoveredClimb.BeginIndex &&
+                climb.EndIndex == HoveredClimb.EndIndex)
+            {
+                climbIndex = i;
+                break;
+            }
+        }
+
+        return new HoveredClimbMapPayload
+        {
+            BeginIndex = HoveredClimb.BeginIndex,
+            EndIndex = HoveredClimb.EndIndex,
+            ClimbIndex = climbIndex >= 0 ? climbIndex : null
+        };
+    }
+
+    private SelectedClimbMapPayload BuildSelectedClimbPayload()
+    {
+        return new SelectedClimbMapPayload
+        {
+            BeginIndex = SelectedClimb?.BeginIndex,
+            EndIndex = SelectedClimb?.EndIndex
+        };
+    }
+
+    private string BuildHoveredClimbSignature()
+    {
+        var begin = HoveredClimb?.BeginIndex ?? -1;
+        var end = HoveredClimb?.EndIndex ?? -1;
+
+        return $"{begin}:{end}";
+    }
+
+    private string BuildSelectedClimbSignature()
+    {
+        var begin = SelectedClimb?.BeginIndex ?? -1;
+        var end = SelectedClimb?.EndIndex ?? -1;
+
+        return $"{begin}:{end}";
     }
 
     public async ValueTask DisposeAsync()

@@ -1,6 +1,27 @@
 window.flightMapComponent = window.flightMapComponent || (function () {
     const instances = {};
 
+    const climbColors = [
+        "#2563eb",
+        "#16a34a",
+        "#ea580c",
+        "#9333ea",
+        "#0891b2",
+        "#dc2626"
+    ];
+
+    const hoverConfig = {
+        haloWeight: 10,
+        lineWeight: 5,
+        opacity: 0.9
+    };
+
+    const selectedConfig = {
+        haloWeight: 12,
+        lineWeight: 6,
+        opacity: 1.0
+    };
+
     function createRoadLayer() {
         return L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
@@ -65,6 +86,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             startMarker: null,
             endMarker: null,
             cursorMarker: null,
+            hoveredClimbLayer: null,
+            selectedClimbLayer: null,
             latE7: null,
             lonE7: null,
             lastHoverTrackIndex: -1,
@@ -76,6 +99,141 @@ window.flightMapComponent = window.flightMapComponent || (function () {
 
         instances[elementId] = instance;
         return instance;
+    }
+
+    function renderClimbHighlight(instance, config) {
+        if (!instance) return;
+
+        const {
+            beginIndex,
+            endIndex,
+            haloWeight,
+            lineWeight,
+            opacity,
+            layerKey
+        } = config;
+
+        instance[layerKey + "Halo"] = removeLayer(instance.map, instance[layerKey + "Halo"]);
+        instance[layerKey + "Line"] = removeLayer(instance.map, instance[layerKey + "Line"]);
+
+        if (beginIndex == null || endIndex == null)
+            return;
+
+        const halo = buildSegmentPolyline(
+            instance,
+            beginIndex,
+            endIndex,
+            "#000000",
+            haloWeight,
+            0.5
+        );
+
+        const line = buildSegmentPolyline(
+            instance,
+            beginIndex,
+            endIndex,
+            "#facc15",
+            lineWeight,
+            opacity
+        );
+
+        if (halo) {
+            halo.addTo(instance.map);
+            instance[layerKey + "Halo"] = halo;
+        }
+
+        if (line) {
+            line.addTo(instance.map);
+            instance[layerKey + "Line"] = line;
+        }
+    }
+
+    function updateSelectedClimb(mapId, payload) {
+        const instance = instances[mapId];
+        if (!instance) return;
+
+        renderClimbHighlight(instance, {
+            beginIndex: payload?.beginIndex,
+            endIndex: payload?.endIndex,
+            color: "#ef4444",
+            haloWeight: 12,
+            lineWeight: 6,
+            opacity: 1.0,
+            layerKey: "selectedClimb"
+        });
+    }
+
+    function updateHoveredClimb(mapId, payload) {
+        const instance = instances[mapId];
+        if (!instance) return;
+
+        const beginIndex = payload?.beginIndex;
+        const endIndex = payload?.endIndex;
+        const climbIndex = payload?.climbIndex;
+
+        const color = climbIndex != null
+            ? climbColors[climbIndex % climbColors.length]
+            : "#2563eb";
+
+        renderClimbHighlight(instance, {
+            beginIndex,
+            endIndex,
+            color,
+            haloWeight: 10,
+            lineWeight: 5,
+            opacity: 0.9,
+            layerKey: "hoveredClimb"
+        });
+    }
+
+    function buildSegmentPolyline(instance, beginIndex, endIndex, color, weight, opacity) {
+        if (!instance || !instance.latE7 || !instance.lonE7)
+            return null;
+
+        if (beginIndex == null || endIndex == null)
+            return null;
+
+        if (beginIndex < 0 || endIndex < beginIndex)
+            return null;
+
+        const maxIndex = Math.min(instance.latE7.length, instance.lonE7.length) - 1;
+        if (maxIndex < 0)
+            return null;
+
+        const from = Math.max(0, Math.min(beginIndex, maxIndex));
+        const to = Math.max(0, Math.min(endIndex, maxIndex));
+
+        if (to < from)
+            return null;
+
+        const latlngs = [];
+
+        for (let i = from; i <= to; i++) {
+            latlngs.push([
+                instance.latE7[i] / 1e7,
+                instance.lonE7[i] / 1e7
+            ]);
+        }
+
+        if (latlngs.length < 2)
+            return null;
+
+        return L.polyline(latlngs, {
+            color,
+            weight,
+            opacity,
+            interactive: false
+        });
+    }
+
+    function removeLayer(map, layer) {
+        if (!map || !layer) return null;
+
+        if (map.hasLayer(layer)) {
+            map.removeLayer(layer);
+        }
+
+        return null;
     }
 
     function createVarioLegend() {
@@ -368,6 +526,9 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         const instance = instances[elementId];
         if (!instance) return;
 
+        instance.hoveredClimbLayer = removeLayer(instance.map, instance.hoveredClimbLayer);
+        instance.selectedClimbLayer = removeLayer(instance.map, instance.selectedClimbLayer);
+
         instance.map.remove();
         delete instances[elementId];
     }
@@ -375,6 +536,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
     return {
         renderTrackArrays,
         clear,
-        dispose
+        dispose,
+        updateHoveredClimb,
+        updateSelectedClimb
     };
 })();
