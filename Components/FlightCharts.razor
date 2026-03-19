@@ -83,22 +83,6 @@
             lastAllClimbsSignature = null;
         }
 
-        var climbSignature = BuildClimbSignature();
-
-        if (climbSignature != lastClimbSignature)
-        {
-            var payload = BuildSelectedClimbPayload();
-
-            await JS.InvokeVoidAsync(
-                "flightCharts.updateSelectedClimb",
-                altChartId,
-                varioChartId,
-                speedChartId,
-                payload);
-
-            lastClimbSignature = climbSignature;
-        }
-
         var allSignature = BuildAllClimbsSignature();
 
         if (allSignature != lastAllClimbsSignature)
@@ -114,8 +98,23 @@
 
             lastAllClimbsSignature = allSignature;
         }
-    }
 
+        var climbSignature = BuildClimbSignature();
+
+        if (climbSignature != lastClimbSignature)
+        {
+            var payload = BuildSelectedClimbPayload();
+
+            await JS.InvokeVoidAsync(
+                "flightCharts.updateSelectedClimb",
+                altChartId,
+                varioChartId,
+                speedChartId,
+                payload);
+
+            lastClimbSignature = climbSignature;
+        }
+    }
     public async ValueTask DisposeAsync()
     {
         if (disposed)

@@ -2,9 +2,7 @@ namespace FlightApp.Domain;
 
 
 public class FlightStats
-{
-
-    
+{ 
     public bool IsSegmentSelection { get; set; }
 
     public int? SelectionStartIndex { get; set; }

@@ -17,6 +17,6 @@ builder.Services.AddScoped<IgcParser>();
 builder.Services.AddScoped<FlightStatsCalculator>();
 builder.Services.AddScoped<FlightService>();
 builder.Services.AddScoped<FlightDetailsLoadService>();
-
+builder.Services.AddScoped<FlightDetailsSelectionService>();
 
 await builder.Build().RunAsync();

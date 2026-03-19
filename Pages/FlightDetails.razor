@@ -1,3 +1,5 @@
+@* Pages\FlightDetails.razor *@
+
 @page "/flights/{Id}"
 
 @using FlightApp.Analysis
@@ -11,8 +13,8 @@
 @implements IAsyncDisposable
 
 @inject FlightService FlightService
-
 @inject FlightDetailsLoadService FlightDetailsLoadService
+@inject FlightDetailsSelectionService SelectionService
 
 @inject IJSRuntime JS
 
@@ -71,7 +73,7 @@
                         <div class="hero-kpi-label">Duration</div>
                         <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
                         <div class="hero-kpi-sub">@(SelectedClimb is null ?
-                                                                                                                                    FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
+                                                                                                                                                                                                                                                                                                                                        FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
                         </div>
                     </div>
 
@@ -226,7 +228,6 @@
 
     private DotNetObjectReference<FlightDetails>? dotNetRef;
 
-
     private ClimbSegment? SelectedClimb
     => state.SelectedClimbIndex.HasValue &&
     state.SelectedClimbIndex.Value >= 0 &&
@@ -306,69 +307,76 @@
             state.IsLoading = false;
         }
     }
+    private void ApplySelectionResult(FlightDetailsSelectionResult result)
+    {
+        // wichtig: nur setzen, wenn sinnvoll (sonst verlieren wir State)
+        if (result.DisplayedStats is not null)
+            state.DisplayedStats = result.DisplayedStats;
 
+        state.SelectedClimbIndex = result.SelectedClimbIndex;
+        state.CurrentSelection = result.CurrentSelection;
+        state.ShowAllClimbs = result.ShowAllClimbs;
+
+        StateHasChanged();
+    }
 
     private void ApplySelection(int startIndex, int endIndex)
     {
         if (state.TrackArrays is null)
             return;
 
-        var selection = new SelectionRange(startIndex, endIndex);
-        if (!selection.IsValid)
-            return;
+        var result = SelectionService.ApplySelection(
+            state.TrackArrays,
+            startIndex,
+            endIndex);
 
-        state.CurrentSelection = selection;
-        state.DisplayedStats = segmentStatsCalculator.Calculate(state.TrackArrays, selection);
-
-        StateHasChanged();
+        ApplySelectionResult(result);
     }
 
     private void ClearSelection()
     {
-        state.SelectedClimbIndex = null;
-        state.CurrentSelection = null;
-        state.ShowAllClimbs = false;
-        state.DisplayedStats = state.Flight?.Stats;
-
-        StateHasChanged();
+        var result = SelectionService.ClearSelection(state.Flight);
+        ApplySelectionResult(result);
     }
 
     private void SelectPreviousClimb()
     {
-        if (!CanSelectPreviousClimb)
+        if (state.TrackArrays is null)
             return;
 
-        SelectClimb(state.SelectedClimbIndex!.Value - 1);
+        var result = SelectionService.SelectPreviousClimb(
+            state.TrackArrays,
+            state.ClimbSegments,
+            state.SelectedClimbIndex);
+
+        ApplySelectionResult(result);
     }
 
     private void SelectNextClimb()
     {
-        if (state.ClimbSegments.Count == 0)
+        if (state.TrackArrays is null)
             return;
 
-        if (!state.SelectedClimbIndex.HasValue)
-        {
-            SelectClimb(0);
-            return;
-        }
+        var result = SelectionService.SelectNextClimb(
+            state.TrackArrays,
+            state.ClimbSegments,
+            state.SelectedClimbIndex);
 
-        if (state.SelectedClimbIndex.Value >= state.ClimbSegments.Count - 1)
-            return;
-
-        SelectClimb(state.SelectedClimbIndex.Value + 1);
+        ApplySelectionResult(result);
     }
 
     private void SelectClimb(int index)
     {
-        if (index < 0 || index >= state.ClimbSegments.Count)
+        if (state.TrackArrays is null)
             return;
 
-        state.SelectedClimbIndex = index;
+        var result = SelectionService.SelectClimb(
+            state.TrackArrays,
+            state.ClimbSegments,
+            index);
 
-        var climb = state.ClimbSegments[index];
-        ApplySelection(climb.BeginIndex, climb.EndIndex);
+        ApplySelectionResult(result);
     }
-
     private string GetLeftPaneStyle()
     => $"flex: 0 0 {state.LeftPanePercent}%";
 
