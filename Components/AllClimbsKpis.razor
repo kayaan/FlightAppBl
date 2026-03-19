@@ -1,0 +1,39 @@
+@using FlightApp.Analysis
+@using FlightApp.Domain
+@using FlightApp.Components
+
+@if (Items is not null && Items.Count > 0)
+{
+    <div class="ux-kpi-container">
+        @foreach (var item in Items)
+        {
+            <KpiTile Title="@item.Label" Meta="@item.SubText">
+                <ValueContent>
+                    <span class="ux-kpi-link"
+                          @onclick="@(() => OnClimbClick.InvokeAsync(item.MaxClimbIndex))"
+                          @onmouseenter="@(() => OnClimbHover.InvokeAsync(item.MaxClimbIndex))"
+                          @onmouseleave="@(() => OnClimbLeave.InvokeAsync())">
+                        @item.MaxText
+                    </span>
+
+                    <span class="ux-kpi-separator"> / </span>
+
+                    <span class="ux-kpi-link"
+                          @onclick="@(() => OnClimbClick.InvokeAsync(item.MinClimbIndex))"
+                          @onmouseenter="@(() => OnClimbHover.InvokeAsync(item.MinClimbIndex))"
+                          @onmouseleave="@(() => OnClimbLeave.InvokeAsync())">
+                        @item.MinText
+                    </span>
+                </ValueContent>
+            </KpiTile>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<ClimbSummaryKpi> Items { get; set; } = new();
+
+    [Parameter] public EventCallback<int> OnClimbClick { get; set; }
+    [Parameter] public EventCallback<int> OnClimbHover { get; set; }
+    [Parameter] public EventCallback OnClimbLeave { get; set; }
+}

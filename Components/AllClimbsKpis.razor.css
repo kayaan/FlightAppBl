@@ -1,0 +1,17 @@
+.ux-kpi-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ux-kpi-link {
+    cursor: pointer;
+    color: #2563eb;
+    font: inherit;
+    line-height: inherit;
+    text-decoration: none;
+}
+
+.ux-kpi-separator {
+    color: inherit;
+}

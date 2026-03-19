@@ -1,0 +1,28 @@
+<div class="ux-kpi-tile">
+    <div class="ux-kpi-title">
+        <span class="ux-kpi-title-text">@Title</span>
+        @if (!string.IsNullOrWhiteSpace(Meta))
+        {
+            <span class="ux-kpi-meta">@Meta</span>
+        }
+    </div>
+
+    <div class="ux-kpi-value">
+        @if (ValueContent is not null)
+        {
+            @ValueContent
+        }
+        else
+        {
+            @Value
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Meta { get; set; }
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public RenderFragment? ValueContent { get; set; }
+}

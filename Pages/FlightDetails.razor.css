@@ -30,52 +30,6 @@
     margin-bottom: 18px;
 }
 
-.flight-kpis-top {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 14px;
-}
-
-.hero-kpi {
-    display: inline-flex;
-    flex-direction: column;
-    width: fit-content;
-    max-width: 100%;
-
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    padding: 10px 12px;
-    background: #fff;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
-}
-
-.hero-kpi-label {
-    margin-bottom: 4px;
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-.hero-kpi-value {
-    font-weight: 800;
-    font-size: 1.08rem;
-    line-height: 1.15;
-    color: #0f172a;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
-.hero-kpi-sub {
-    margin-top: 4px;
-    font-size: 0.75rem;
-    line-height: 1.2;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 .flight-layout {
     display: flex;
     align-items: stretch;
@@ -103,6 +57,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
 }
 
 .splitter {
@@ -229,15 +184,6 @@
     background: transparent;
 }
 
-.hero-kpi-selection {
-    border-color: #f59e0b;
-    border-width: 2px;
-}
-
-.hero-kpi-selection .hero-kpi-value {
-    color: #f59e0b;
-}
-
 .climb-nav-row {
     flex: 0 0 auto;
     width: 100%;
@@ -359,6 +305,33 @@
     cursor: not-allowed;
 }
 
+.map-style-toggle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 4px;
+    border-radius: 8px;
+    z-index: 1000;
+}
+
+.map-toggle-btn {
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.map-toggle-btn.active {
+    background: #2d7ef7;
+    color: white;
+}
+
 @media (max-width: 1200px) {
     .flight-details-page {
         height: auto;
@@ -394,73 +367,4 @@
     .map-surface {
         min-height: 420px;
     }
-}
-
-.flight-kpis-dimmed .hero-kpi {
-    opacity: 0.45;
-    transition: opacity 150ms ease;
-}
-
-.hero-kpi-clickable {
-    cursor: pointer;
-    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-}
-
-.hero-kpi-clickable:hover {
-    transform: translateY(-1px);
-}
-
-.hero-kpi-minmax {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.35rem;
-}
-
-.hero-kpi-side-label {
-    font-size: 0.72rem;
-    color: #94a3b8;
-    font-weight: 600;
-}
-
-.hero-kpi-separator {
-    color: #94a3b8;
-    margin: 0 0.1rem;
-}
-
-.hero-kpi-link {
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-
-.map-style-toggle {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    display: flex;
-    gap: 6px;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 4px;
-    border-radius: 8px;
-    z-index: 1000;
-}
-
-.map-toggle-btn {
-    border: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.map-toggle-btn.active {
-    background: #2d7ef7;
-    color: white;
-}
-
-.right-pane {
-    position: relative;
 }

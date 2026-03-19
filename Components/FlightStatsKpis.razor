@@ -1,0 +1,42 @@
+@using FlightApp.Analysis
+@using FlightApp.Domain
+@using FlightApp.Components
+
+@if (Stats is not null)
+{
+    <div class="ux-kpi-container">
+        <KpiTile Title="Date / Time"
+                 Value="@FlightDetailsFormatters.FormatDateTimeShort(Stats.StartTimeUtc)" />
+
+        <KpiTile Title="Duration"
+                 Value="@FlightDetailsFormatters.FormatDuration(Stats.Duration)" />
+
+        <KpiTile Title="Distance"
+                 Value="@FlightDetailsFormatters.FormatDistanceKm(Stats.TotalDistanceMeters)" />
+
+        <KpiTile Title="Altitude"
+                 Meta="min/max"
+                 Value="@FlightDetailsFormatters.FormatAltitudeMinMaxPreferred(Stats)" />
+
+        <KpiTile Title="Vario"
+                 Meta="min/max"
+                 Value="@FlightDetailsFormatters.FormatVario(Stats, null)" />
+
+        <KpiTile Title="Speed"
+                 Meta="avg/max"
+                 Value="@FlightDetailsFormatters.FormatSpeedAvgMax(Stats)" />
+
+        <KpiTile Title="Takeoff / Landing Elevation"
+                 Value="@($"{FlightDetailsFormatters.FormatAltitudeValue(GetTakeoffHeight(Stats))} / {FlightDetailsFormatters.FormatAltitudeValue(GetLandingHeight(Stats))}")" />
+    </div>
+}
+
+@code {
+    [Parameter] public FlightStats? Stats { get; set; }
+
+    private static int? GetTakeoffHeight(FlightStats stats)
+        => stats.AltBaroStart ?? stats.AltGpsStart;
+
+    private static int? GetLandingHeight(FlightStats stats)
+        => stats.AltBaroEnd ?? stats.AltGpsEnd;
+}

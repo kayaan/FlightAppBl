@@ -1,0 +1,33 @@
+.ux-kpi-tile {
+    display: inline-flex;
+    flex-direction: column;
+
+    padding: 6px 9px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+
+    width: fit-content;
+    /* optional, aber gut */
+}
+
+.ux-kpi-title {
+    font-size: 0.75rem;
+}
+
+/* Title dunkler */
+.ux-kpi-title-text {
+    color: #000000;
+}
+
+
+.ux-kpi-meta {
+    color: #868686;
+    margin-left: 4px;
+}
+
+.ux-kpi-value {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2
+}
