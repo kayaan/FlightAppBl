@@ -29,6 +29,9 @@
     [Parameter] public ClimbSegment? SelectedClimb { get; set; }
     [Parameter] public IReadOnlyList<ClimbSegment>? ClimbSegments { get; set; }
     [Parameter] public bool ShowAllClimbs { get; set; }
+    [Parameter] public ClimbSegment? HoveredClimb { get; set; }
+
+    private string? lastHoveredClimbSignature;
 
     private readonly string altChartId = $"chart-alt-{Guid.NewGuid():N}";
     private readonly string varioChartId = $"chart-vario-{Guid.NewGuid():N}";
@@ -58,6 +61,7 @@
                 lastDataSignature = null;
                 lastClimbSignature = null;
                 lastAllClimbsSignature = null;
+                lastHoveredClimbSignature = null;
             }
 
             return;
@@ -81,6 +85,7 @@
             lastDataSignature = dataSignature;
             lastClimbSignature = null;
             lastAllClimbsSignature = null;
+            lastHoveredClimbSignature = null;
         }
 
         var allSignature = BuildAllClimbsSignature();
@@ -99,6 +104,22 @@
             lastAllClimbsSignature = allSignature;
         }
 
+        var hoveredSignature = BuildHoveredClimbSignature();
+
+        if (hoveredSignature != lastHoveredClimbSignature)
+        {
+            var payload = BuildHoveredClimbPayload();
+
+            await JS.InvokeVoidAsync(
+                "flightCharts.updateHoveredClimb",
+                altChartId,
+                varioChartId,
+                speedChartId,
+                payload);
+
+            lastHoveredClimbSignature = hoveredSignature;
+        }
+
         var climbSignature = BuildClimbSignature();
 
         if (climbSignature != lastClimbSignature)
@@ -115,6 +136,50 @@
             lastClimbSignature = climbSignature;
         }
     }
+
+    private string BuildHoveredClimbSignature()
+    {
+        if (!ShowAllClimbs)
+            return "off";
+
+        var begin = HoveredClimb?.BeginIndex ?? -1;
+        var end = HoveredClimb?.EndIndex ?? -1;
+
+        return $"{begin}:{end}";
+    }
+
+    private HoveredClimbPayload BuildHoveredClimbPayload()
+    {
+        if (!ShowAllClimbs ||
+            Track?.TimeSec is not { Length: > 0 } timeSec ||
+            HoveredClimb is null ||
+            ClimbSegments is null)
+        {
+            return new HoveredClimbPayload();
+        }
+
+        var hoveredIndex = -1;
+
+        for (int i = 0; i < ClimbSegments.Count; i++)
+        {
+            var climb = ClimbSegments[i];
+
+            if (climb.BeginIndex == HoveredClimb.BeginIndex &&
+                climb.EndIndex == HoveredClimb.EndIndex)
+            {
+                hoveredIndex = i;
+                break;
+            }
+        }
+
+        return new HoveredClimbPayload
+        {
+            HoveredClimbBeginSec = timeSec[HoveredClimb.BeginIndex],
+            HoveredClimbEndSec = timeSec[HoveredClimb.EndIndex],
+            HoveredClimbIndex = hoveredIndex >= 0 ? hoveredIndex : null
+        };
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (disposed)

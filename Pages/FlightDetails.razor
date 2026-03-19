@@ -73,7 +73,7 @@
                         <div class="hero-kpi-label">Duration</div>
                         <div class="hero-kpi-value">@FormatDisplayedDuration()</div>
                         <div class="hero-kpi-sub">@(SelectedClimb is null ?
-                                                                                                                                                                                                                                                                                                                                        FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
+                                                                                                                                    FlightDetailsFormatters.NullOrDash(state.Flight.GliderId) : "Selected climb")
                         </div>
                     </div>
 
@@ -132,15 +132,16 @@
                             <div class="hero-kpi-value hero-kpi-minmax">
                                 <span class="hero-kpi-side-label">Max</span>
 
-                                <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MaxClimbIndex))">
+                                <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MaxClimbIndex))"
+                                      @onmouseenter="@(() => SetHoveredClimb(item.MaxClimbIndex))" @onmouseleave="ClearHoveredClimb">
                                     @item.MaxText
                                 </span>
 
                                 <span class="hero-kpi-separator">/</span>
 
                                 <span class="hero-kpi-side-label">Min</span>
-
-                                <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MinClimbIndex))">
+                                <span class="hero-kpi-link" @onclick="@(() => SelectClimb(item.MinClimbIndex))"
+                                      @onmouseenter="@(() => SetHoveredClimb(item.MinClimbIndex))" @onmouseleave="ClearHoveredClimb">
                                     @item.MinText
                                 </span>
                             </div>
@@ -186,8 +187,8 @@
 
             <div class="flight-layout" @ref="state.FlightLayoutRef">
                 <div class="left-pane" style="@GetLeftPaneStyle()">
-                    <FlightCharts Track="state.TrackArrays" SelectedClimb="SelectedClimb" ClimbSegments="state.ClimbSegments"
-                                  ShowAllClimbs="state.ShowAllClimbs" />
+                    <FlightCharts Track="state.TrackArrays" SelectedClimb="SelectedClimb" HoveredClimb="HoveredClimb"
+                                  ClimbSegments="state.ClimbSegments" ShowAllClimbs="state.ShowAllClimbs" />
                 </div>
 
                 <div class="splitter @(state.IsResizing ? "splitter-active" : null)" @onmousedown="StartResize"
@@ -222,6 +223,24 @@
 @code {
     [Parameter]
     public string? Id { get; set; }
+
+    private int? hoveredClimbIndex;
+    private ClimbSegment? HoveredClimb
+    => hoveredClimbIndex.HasValue &&
+    hoveredClimbIndex.Value >= 0 &&
+    hoveredClimbIndex.Value < state.ClimbSegments.Count
+    ? state.ClimbSegments[hoveredClimbIndex.Value]
+    : null;
+
+    private void SetHoveredClimb(int index)
+    {
+        hoveredClimbIndex = index;
+    }
+
+    private void ClearHoveredClimb()
+    {
+        hoveredClimbIndex = null;
+    }
 
     private readonly TrackSegmentStatsCalculator segmentStatsCalculator = new();
     private readonly FlightDetailsState state = new();
@@ -326,9 +345,9 @@
             return;
 
         var result = SelectionService.ApplySelection(
-            state.TrackArrays,
-            startIndex,
-            endIndex);
+        state.TrackArrays,
+        startIndex,
+        endIndex);
 
         ApplySelectionResult(result);
     }
@@ -345,9 +364,9 @@
             return;
 
         var result = SelectionService.SelectPreviousClimb(
-            state.TrackArrays,
-            state.ClimbSegments,
-            state.SelectedClimbIndex);
+        state.TrackArrays,
+        state.ClimbSegments,
+        state.SelectedClimbIndex);
 
         ApplySelectionResult(result);
     }
@@ -358,9 +377,9 @@
             return;
 
         var result = SelectionService.SelectNextClimb(
-            state.TrackArrays,
-            state.ClimbSegments,
-            state.SelectedClimbIndex);
+        state.TrackArrays,
+        state.ClimbSegments,
+        state.SelectedClimbIndex);
 
         ApplySelectionResult(result);
     }
@@ -370,10 +389,12 @@
         if (state.TrackArrays is null)
             return;
 
+        hoveredClimbIndex = null;
+
         var result = SelectionService.SelectClimb(
-            state.TrackArrays,
-            state.ClimbSegments,
-            index);
+        state.TrackArrays,
+        state.ClimbSegments,
+        index);
 
         ApplySelectionResult(result);
     }

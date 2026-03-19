@@ -3,6 +3,15 @@ window.flightCharts = (function () {
     const instances = {};
     const chartGroup = "flight-charts-sync-group";
 
+    const colors = [
+        "#2563eb",
+        "#16a34a",
+        "#ea580c",
+        "#9333ea",
+        "#0891b2",
+        "#dc2626"
+    ];
+
     let hoverThrottleMs = 25;
     let lastHoverUpdateMs = 0;
     let lastTrackIndex = -1;
@@ -18,6 +27,14 @@ window.flightCharts = (function () {
     let lastSelectionKey = null;
 
     let isSyncingBrush = false;
+
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.substring(1, 3), 16);
+        const g = parseInt(hex.substring(3, 5), 16);
+        const b = parseInt(hex.substring(5, 7), 16);
+
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
 
     function registerSelectionCallback(dotNetRef) {
         selectionCallback = dotNetRef;
@@ -566,15 +583,6 @@ window.flightCharts = (function () {
             return;
         }
 
-        const colors = [
-            "#2563eb",
-            "#16a34a",
-            "#ea580c",
-            "#9333ea",
-            "#0891b2",
-            "#dc2626"
-        ];
-
         const lines = [];
 
         for (let i = 0; i < payload.begin.length; i++) {
@@ -617,6 +625,52 @@ window.flightCharts = (function () {
 
     }
 
+    function updateHoveredClimb(altChartId, varioChartId, speedChartId, payload) {
+        updateHoveredClimbForChart(altChartId, payload);
+        updateHoveredClimbForChart(varioChartId, payload);
+        updateHoveredClimbForChart(speedChartId, payload);
+    }
+
+    function updateHoveredClimbForChart(chartId, payload) {
+        const chart = instances[chartId];
+        if (!chart) return;
+
+        const beginSec = payload?.hoveredClimbBeginSec;
+        const endSec = payload?.hoveredClimbEndSec;
+        const index = payload?.hoveredClimbIndex;
+
+        const series = chart.getOption()?.series ?? [];
+        if (!series.length) return;
+
+        let fillColor = "rgba(37, 99, 235, 0.12)";
+
+        if (index != null) {
+            const baseColor = colors[index % colors.length];
+
+            // HEX → RGBA (mit Transparenz)
+            fillColor = hexToRgba(baseColor, 0.3);
+        }
+
+        const markArea = (beginSec != null && endSec != null)
+            ? {
+                silent: true,
+                itemStyle: {
+                    color: fillColor
+                },
+                data: [[
+                    { xAxis: beginSec },
+                    { xAxis: endSec }
+                ]]
+            }
+            : { data: [] };
+
+        chart.setOption({
+            series: series.map((s, i) =>
+                i === 0
+                    ? { ...s, markArea }
+                    : s)
+        }, false);
+    }
 
     function updateSelectedClimb(altId, varioId, speedId, payload) {
         updateSelectedClimbOne(altId, payload);
@@ -676,7 +730,8 @@ window.flightCharts = (function () {
         clearCursor,
         registerSelectionCallback,
         clearSelectionCallback,
-        updateAllClimbs
+        updateAllClimbs,
+        updateHoveredClimb
     };
 
 })();
