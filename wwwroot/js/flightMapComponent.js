@@ -114,11 +114,9 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             latE7: null,
             lonE7: null,
             lastHoverTrackIndex: -1,
-            legend: null
         };
 
-        instance.legend = createVarioLegend();
-        instance.legend.addTo(map);
+
 
         instances[elementId] = instance;
         return instance;
@@ -180,7 +178,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             endIndex: payload?.endIndex,
             color: "#ef4444",
             haloWeight: 12,
-            lineWeight:4,
+            lineWeight: 4,
             opacity: 1.0,
             layerKey: "selectedClimb"
         });
@@ -260,28 +258,6 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         return null;
     }
 
-    function createVarioLegend() {
-        const legend = L.control({ position: "bottomright" });
-
-        legend.onAdd = function () {
-            const div = L.DomUtil.create("div", "flight-vario-legend");
-
-            div.innerHTML = `
-        <div class="legend-title">Vario</div>
-
-        <div><span style="background:#b30000"></span> &gt; 1.5 m/s</div>
-        <div><span style="background:#ff3030"></span> 0.3 – 1.5</div>
-        <div><span style="background:#38bdf8"></span> -0.3 – 0.3</div>
-        <div><span style="background:#2a62ff"></span> -1.5 – -0.3</div>
-        <div><span style="background:#0038d9"></span> &lt; -1.5</div>
-        `;
-
-            return div;
-        };
-
-        return legend;
-    }
-
     function clear(elementId) {
         const instance = instances[elementId];
         if (!instance) return;
@@ -344,24 +320,49 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         return latLngs;
     }
 
-    function getTrackColorByVario(varioCms) {
-        const v = varioCms * 0.01;
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
 
-        if (v > 1.5)
-            return "#b30000";
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
 
-        if (v > 0.3)
-            return "#ff3030";
+function rgbToHex(r, g, b) {
+    const toHex = (x) => Math.round(x).toString(16).padStart(2, "0");
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
 
-        if (v >= -0.3)
-            return "#38bdf8";
+function interpolateColor(colorA, colorB, t) {
+    return rgbToHex(
+        lerp(colorA[0], colorB[0], t),
+        lerp(colorA[1], colorB[1], t),
+        lerp(colorA[2], colorB[2], t)
+    );
+}
 
-        if (v >= -1.5)
-            return "#2a62ff";
+function getTrackColorByVario(varioCms) {
+    const v = varioCms * 0.01;
 
-        return "#0038d9";
+    const maxAbsVario = 3.5;
+
+    const tRaw = clamp(Math.abs(v) / maxAbsVario, 0, 1);
+    const t = Math.pow(tRaw, 0.35); // 🔥 sehr aggressiv
+
+    const neutral = [180, 180, 180];
+    const darkRed = [140, 0, 0];
+    const darkBlue = [0, 30, 180];
+
+    if (v > 0) {
+        return interpolateColor(neutral, darkRed, t);
     }
 
+    if (v < 0) {
+        return interpolateColor(neutral, darkBlue, t);
+    }
+
+    return rgbToHex(neutral[0], neutral[1], neutral[2]);
+}
     function buildColoredTrackSegments(latE7, lonE7, varioCms) {
         if (!latE7 || !lonE7 || !varioCms) return [];
 
