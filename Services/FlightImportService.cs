@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using FlightApp.Analysis;
 using FlightApp.Domain;
 
@@ -24,15 +27,36 @@ public class FlightImportService
 
     public async Task<Flight> ImportAndSaveAsync(string igcContent)
     {
+        var hash = ComputeHash(igcContent);
+
+        var existing = await _flightStorage.GetFlightByFileHashAsync(hash);
+        if (existing != null)
+        {
+            return existing;
+        }
+
         var result = ImportInternal(igcContent);
+
+        result.Flight.FileHash = hash;
 
         var trackBinary = _trackBinarySerializer.Serialize(result.Track);
 
-        await _flightStorage.SaveFlightAsync(result.Flight);
-        await _flightStorage.SaveTrackAsync(result.Flight.Id, trackBinary);
-        await _flightStorage.SaveIgcAsync(result.Flight.Id, igcContent);
+        await _flightStorage.SaveFlightAggregateAsync(
+            result.Flight,
+            trackBinary,
+            igcContent
+        );
 
         return result.Flight;
+    }
+
+    private static string ComputeHash(string content)
+    {
+        using var sha = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(content);
+        var hash = sha.ComputeHash(bytes);
+
+        return Convert.ToHexString(hash);
     }
 
     private FlightImportResult ImportInternal(string igcContent)
@@ -45,9 +69,9 @@ public class FlightImportService
 
         var flight = new Flight
         {
-            Date = header!.Date!.ToString(),
-            PilotId = header.Pilot,
-            GliderId = header.Glider,
+            Date = FormatFlightDate(header?.Date),
+            PilotId = header?.Pilot,
+            GliderId = header?.Glider,
             Stats = stats
         };
 
@@ -56,6 +80,38 @@ public class FlightImportService
             Flight = flight,
             Track = track
         };
+    }
+
+    private static string? FormatFlightDate(object? date)
+    {
+        if (date is null)
+            return null;
+
+        if (date is string s)
+            return s;
+
+        if (date is DateTime dt)
+            return dt.ToString("yyyy-MM-dd");
+
+        var type = date.GetType();
+
+        var yearProp = type.GetProperty("Year", BindingFlags.Public | BindingFlags.Instance);
+        var monthProp = type.GetProperty("Month", BindingFlags.Public | BindingFlags.Instance);
+        var dayProp = type.GetProperty("Day", BindingFlags.Public | BindingFlags.Instance);
+
+        if (yearProp is not null && monthProp is not null && dayProp is not null)
+        {
+            var yearValue = yearProp.GetValue(date);
+            var monthValue = monthProp.GetValue(date);
+            var dayValue = dayProp.GetValue(date);
+
+            if (yearValue is int year && monthValue is int month && dayValue is int day)
+            {
+                return $"{year:D4}-{month:D2}-{day:D2}";
+            }
+        }
+
+        return date.ToString();
     }
 
     private TrackArrays BuildTrackArrays(List<FixPoint> fixes)

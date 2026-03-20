@@ -12,8 +12,16 @@ window.flightDb = {
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
 
+                let flightsStore;
+
                 if (!db.objectStoreNames.contains("flights")) {
-                    db.createObjectStore("flights", { keyPath: "id" });
+                    flightsStore = db.createObjectStore("flights", { keyPath: "id" });
+                } else {
+                    flightsStore = event.target.transaction.objectStore("flights");
+                }
+
+                if (!flightsStore.indexNames.contains("fileHash")) {
+                    flightsStore.createIndex("fileHash", "fileHash", { unique: true });
                 }
 
                 if (!db.objectStoreNames.contains("tracks")) {
@@ -26,19 +34,6 @@ window.flightDb = {
             };
 
             request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    },
-
-    async putFlight(flight) {
-        await this.init();
-
-        return await new Promise((resolve, reject) => {
-            const tx = this.db.transaction("flights", "readwrite");
-            const store = tx.objectStore("flights");
-            const request = store.put(flight);
-
-            request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
     },
@@ -77,19 +72,61 @@ window.flightDb = {
         });
     },
 
-    async putTrack(flightId, trackBinary) {
+    async getFlightByFileHashAsync(fileHash) {
+        await this.init();
+
+        if (!fileHash) {
+            return null;
+        }
+
+        return await new Promise((resolve, reject) => {
+            const tx = this.db.transaction("flights", "readonly");
+            const store = tx.objectStore("flights");
+            const index = store.index("fileHash");
+            const request = index.get(fileHash);
+
+            request.onsuccess = () => resolve(request.result ?? null);
+            request.onerror = () => reject(request.error);
+        });
+    },
+
+    async saveFlightAggregate(flight, trackBinary, igcContent) {
         await this.init();
 
         return await new Promise((resolve, reject) => {
-            const tx = this.db.transaction("tracks", "readwrite");
-            const store = tx.objectStore("tracks");
-            const request = store.put({
-                flightId: flightId,
+            const tx = this.db.transaction(["flights", "tracks", "igc"], "readwrite");
+
+            tx.objectStore("flights").put(flight);
+
+            tx.objectStore("tracks").put({
+                flightId: flight.id,
                 data: trackBinary
             });
 
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
+            tx.objectStore("igc").put({
+                flightId: flight.id,
+                content: igcContent
+            });
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    },
+
+    async deleteFlight(flightId) {
+        await this.init();
+
+        return await new Promise((resolve, reject) => {
+            const tx = this.db.transaction(["flights", "tracks", "igc"], "readwrite");
+
+            tx.objectStore("flights").delete(flightId);
+            tx.objectStore("tracks").delete(flightId);
+            tx.objectStore("igc").delete(flightId);
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
         });
     },
 
@@ -102,22 +139,6 @@ window.flightDb = {
             const request = store.get(flightId);
 
             request.onsuccess = () => resolve(request.result ? request.result.data : null);
-            request.onerror = () => reject(request.error);
-        });
-    },
-
-    async putIgc(flightId, igcContent) {
-        await this.init();
-
-        return await new Promise((resolve, reject) => {
-            const tx = this.db.transaction("igc", "readwrite");
-            const store = tx.objectStore("igc");
-            const request = store.put({
-                flightId: flightId,
-                content: igcContent
-            });
-
-            request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
     },

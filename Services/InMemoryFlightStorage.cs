@@ -61,4 +61,18 @@ public class InMemoryFlightStorage : IFlightStorage
         throw new NotImplementedException();
     }
 
+    public async Task DeleteFlightAsync(string id)
+    {
+        _flights.RemoveAll(f => f.Id == id);
+    }
+
+    public Task SaveFlightAggregateAsync(Flight flight, byte[] trackBinary, string igcContent)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Flight?> GetFlightByFileHashAsync(string fileHash)
+    {
+        throw new NotImplementedException();
+    }
 }

@@ -66,6 +66,7 @@
                             <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Climb)">
                                 Climb @SortIndicator(FlightSortColumn.Climb)
                             </th>
+                            <th class="actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -111,6 +112,23 @@
                                         <span class="climb-unit">m/s</span>
                                     </div>
                                 </td>
+<td class="actions-cell">
+    <div class="action-group">
+        <button class="table-action table-action-open"
+                title="Open flight"
+                @onclick="() => OpenFlight(flight.Id)"
+                @onclick:stopPropagation="true">
+            Open
+        </button>
+
+        <button class="table-action table-action-delete"
+                title="Delete flight"
+                @onclick="() => OnDeleteClick(flight.Id)"
+                @onclick:stopPropagation="true">
+            Delete
+        </button>
+    </div>
+</td>
                             </tr>
                         }
                     </tbody>
@@ -138,6 +156,16 @@
         {
             await JS.InvokeVoidAsync("openFilePicker", fileInput.Element);
         }
+    }
+
+    private async Task OnDeleteClick(string id)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", "Delete this flight?");
+        if (!confirm)
+            return;
+
+        await FlightService.DeleteFlightAsync(id);
+        flights = await FlightService.GetFlightsAsync();
     }
 
     private void OpenFlight(string id)

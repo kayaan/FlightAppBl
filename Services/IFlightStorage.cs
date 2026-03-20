@@ -4,13 +4,15 @@ namespace FlightApp.Services;
 
 public interface IFlightStorage
 {
-    Task SaveFlightAsync(Flight flight);
+    Task SaveFlightAggregateAsync(Flight flight, byte[] trackBinary, string igcContent);
+
     Task<List<Flight>> GetFlightsAsync();
     Task<Flight?> GetFlightByIdAsync(string id);
+    Task DeleteFlightAsync(string id);
 
-    Task SaveTrackAsync(string flightId, byte[] trackBinary);
     Task<byte[]?> GetTrackAsync(string flightId);
 
-    Task SaveIgcAsync(string flightId, string igcContent);
     Task<string?> GetIgcAsync(string flightId);
+
+    Task<Flight?> GetFlightByFileHashAsync(string fileHash);
 }

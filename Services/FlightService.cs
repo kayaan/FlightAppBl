@@ -26,6 +26,16 @@ public class FlightService
         }
     }
 
+    public async Task DeleteFlightAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return;
+        }
+
+        await _flightStorage.DeleteFlightAsync(id);
+    }
+
     public Task<List<Flight>> GetFlightsAsync()
     {
         return _flightStorage.GetFlightsAsync();

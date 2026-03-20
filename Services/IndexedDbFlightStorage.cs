@@ -12,9 +12,12 @@ public class IndexedDbFlightStorage : IFlightStorage
         _js = js;
     }
 
-    public async Task SaveFlightAsync(Flight flight)
+    public async Task DeleteFlightAsync(string id)
     {
-        await _js.InvokeVoidAsync("flightDb.putFlight", flight);
+        if (string.IsNullOrWhiteSpace(id))
+            return;
+
+        await _js.InvokeVoidAsync("flightDb.deleteFlight", id);
     }
 
     public async Task<List<Flight>> GetFlightsAsync()
@@ -28,23 +31,24 @@ public class IndexedDbFlightStorage : IFlightStorage
         return await _js.InvokeAsync<Flight?>("flightDb.getFlightById", id);
     }
 
-    public async Task SaveTrackAsync(string flightId, byte[] trackBinary)
-    {
-        await _js.InvokeVoidAsync("flightDb.putTrack", flightId, trackBinary);
-    }
-
     public async Task<byte[]?> GetTrackAsync(string flightId)
     {
         return await _js.InvokeAsync<byte[]?>("flightDb.getTrack", flightId);
-    }
-
-    public async Task SaveIgcAsync(string flightId, string igcContent)
-    {
-        await _js.InvokeVoidAsync("flightDb.putIgc", flightId, igcContent);
     }
 
     public async Task<string?> GetIgcAsync(string flightId)
     {
         return await _js.InvokeAsync<string?>("flightDb.getIgc", flightId);
     }
+
+    public async Task SaveFlightAggregateAsync(Flight flight, byte[] trackBinary, string igcContent)
+    {
+        await _js.InvokeVoidAsync("flightDb.saveFlightAggregate", flight, trackBinary, igcContent);
+    }
+
+    public async Task<Flight?> GetFlightByFileHashAsync(string fileHash)
+    {
+        return await _js.InvokeAsync<Flight?>("flightDb.getFlightByFileHashAsync", fileHash);
+    }
+
 }

@@ -248,3 +248,66 @@
     .flight-row:hover td {
         background: #f8fbff;
     }
+
+    .actions {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.actions-cell {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.table-action {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    padding: 0.32rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.12s ease;
+}
+
+.table-action:hover {
+    transform: translateY(-1px);
+}
+
+.table-action-open {
+    border-color: #334155;
+    color: #cbd5e1;
+    background: rgba(148, 163, 184, 0.06);
+}
+
+.table-action-open:hover {
+    background: rgba(148, 163, 184, 0.14);
+    border-color: #475569;
+    color: #f8fafc;
+}
+
+.table-action-delete {
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.06);
+}
+
+.table-action-delete:hover {
+    background: rgba(239, 68, 68, 0.14);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #fecaca;
+}

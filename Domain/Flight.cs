@@ -1,5 +1,3 @@
-using FlightApp.Analysis;
-
 namespace FlightApp.Domain;
 
 public class Flight
@@ -14,7 +12,7 @@ public class Flight
 
     public FlightStats Stats { get; set; } = new();
 
-    public string? FileHash { get; set; }
+    public string FileHash { get; set; } = default!;
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
