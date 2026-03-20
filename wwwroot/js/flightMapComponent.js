@@ -1,6 +1,8 @@
 window.flightMapComponent = window.flightMapComponent || (function () {
     const instances = {};
 
+    const hoverTrackThresholdPx = 20;
+
     const climbColors = [
         "#2563eb",
         "#16a34a",
@@ -395,6 +397,50 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         return bestIndex;
     }
 
+    function findNearestTrackPointInPixels(map, latE7, lonE7, mouseLatLng) {
+        if (!map || !latE7 || !lonE7 || !mouseLatLng)
+            return { trackIndex: -1, distancePx: Number.POSITIVE_INFINITY };
+
+        const count = Math.min(latE7.length, lonE7.length);
+        if (count === 0)
+            return { trackIndex: -1, distancePx: Number.POSITIVE_INFINITY };
+
+        const mousePoint = map.latLngToContainerPoint(mouseLatLng);
+
+        let bestIndex = -1;
+        let bestDistSq = Number.POSITIVE_INFINITY;
+
+        for (let i = 0; i < count; i++) {
+            const lat = latE7[i] / 1e7;
+            const lon = lonE7[i] / 1e7;
+
+            if (
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lon) ||
+                lat < -90 || lat > 90 ||
+                lon < -180 || lon > 180
+            ) {
+                continue;
+            }
+
+            const point = map.latLngToContainerPoint([lat, lon]);
+
+            const dx = point.x - mousePoint.x;
+            const dy = point.y - mousePoint.y;
+            const distSq = dx * dx + dy * dy;
+
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                bestIndex = i;
+            }
+        }
+
+        return {
+            trackIndex: bestIndex,
+            distancePx: bestIndex >= 0 ? Math.sqrt(bestDistSq) : Number.POSITIVE_INFINITY
+        };
+    }
+
     function renderTrackArrays(elementId, latE7, lonE7, varioCms, mapStyle) {
         const instance = ensureMap(elementId);
         if (!instance) return;
@@ -458,12 +504,23 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             .bindTooltip("Landing");
 
         instance.cursorMarker = L.circleMarker(latLngs[0], {
-            radius: 5,
-            color: "#0f172a",
-            fillColor: "#f59e0b",
+            radius: 7,
+            color: "#000000",        // schwarzer Rand → maximaler Kontrast
+            weight: 3,
+            opacity: 0,
+
+            fillColor: "#fff200",    // leuchtendes Gelb
+            fillOpacity: 0
+        }).addTo(instance.map);
+
+        instance.cursorHalo = L.circleMarker(latLngs[0], {
+            radius: 14,
+            color: "#fff200",
+            weight: 0,
+            fillColor: "#fff200",
             fillOpacity: 0,
             opacity: 0,
-            weight: 2
+            interactive: false
         }).addTo(instance.map);
 
         instance.map.off("mousemove");
@@ -472,15 +529,44 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         instance.map.on("mousemove", function (e) {
             if (!instance.latE7 || !instance.lonE7) return;
 
-            const trackIndex = findNearestTrackIndex(
+            const hit = findNearestTrackPointInPixels(
+                instance.map,
                 instance.latE7,
                 instance.lonE7,
-                e.latlng.lat,
-                e.latlng.lng
+                e.latlng
             );
 
-            if (trackIndex < 0) return;
-            if (trackIndex === instance.lastHoverTrackIndex) return;
+            if (hit.trackIndex < 0 || hit.distancePx > hoverTrackThresholdPx) {
+                if (instance.lastHoverTrackIndex !== -1) {
+                    instance.lastHoverTrackIndex = -1;
+
+                    if (instance.cursorMarker) {
+                        instance.cursorMarker.setStyle({
+                            opacity: 0,
+                            fillOpacity: 0
+                        });
+                    }
+
+                    if (instance.cursorHalo) {
+                        instance.cursorHalo.setStyle({
+                            opacity: 0,
+                            fillOpacity: 0
+                        });
+                    }
+
+                    if (window.flightCharts?.clearCursor) {
+                        window.flightCharts.clearCursor();
+                    }
+                }
+
+                return;
+            }
+
+            const trackIndex = hit.trackIndex;
+
+            if (trackIndex === instance.lastHoverTrackIndex) {
+                return;
+            }
 
             instance.lastHoverTrackIndex = trackIndex;
 
@@ -490,10 +576,20 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             if (instance.cursorMarker) {
                 instance.cursorMarker.setStyle({
                     opacity: 1,
-                    fillOpacity: 1
+                    fillOpacity: 1,
+                    weight: 3
                 });
 
                 instance.cursorMarker.setLatLng([lat, lon]);
+            }
+
+            if (instance.cursorHalo) {
+                instance.cursorHalo.setStyle({
+                    opacity: 0.5,
+                    fillOpacity: 0.2
+                });
+
+                instance.cursorHalo.setLatLng([lat, lon]);
             }
 
             if (!window.flightCharts?.isSuppressChartToMap?.()) {
@@ -503,6 +599,20 @@ window.flightMapComponent = window.flightMapComponent || (function () {
 
         instance.map.on("mouseout", function () {
             instance.lastHoverTrackIndex = -1;
+
+            if (instance.cursorMarker) {
+                instance.cursorMarker.setStyle({
+                    opacity: 0,
+                    fillOpacity: 0
+                });
+            }
+
+            if (instance.cursorHalo) {
+                instance.cursorHalo.setStyle({
+                    opacity: 0,
+                    fillOpacity: 0
+                });
+            }
 
             if (window.flightCharts?.clearCursor) {
                 window.flightCharts.clearCursor();
