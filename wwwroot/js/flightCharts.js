@@ -312,32 +312,66 @@ window.flightCharts = (function () {
         const endIndex = payload?.selectedClimbEndIndex ?? payload?.SelectedClimbEndIndex;
 
         if (beginIndex == null || endIndex == null)
-            return null;
+            return [];
 
         if (!seriesData || seriesData.length === 0)
-            return null;
+            return [];
 
         const beginPoint = seriesData.find(p => p[2] === beginIndex);
         const endPoint = seriesData.find(p => p[2] === endIndex);
 
         if (!beginPoint || !endPoint)
-            return null;
+            return [];
 
-        return {
-            silent: true,
-            symbol: ["none", "none"],
-            animation: false,
-            label: { show: false },
-            lineStyle: {
-                type: "dashed",
-                width: 1,
-                color: "#ef4444"
+        return [
+            {
+                xAxis: beginPoint[0],
+                lineStyle: {
+                    type: "dashed",
+                    width: 1,
+                    color: "#ef4444"
+                }
             },
-            data: [
-                { xAxis: beginPoint[0] },
-                { xAxis: endPoint[0] }
-            ]
-        };
+            {
+                xAxis: endPoint[0],
+                lineStyle: {
+                    type: "dashed",
+                    width: 1,
+                    color: "#ef4444"
+                }
+            }
+        ];
+    }
+
+    function applyCombinedMarkLine(chart) {
+        if (!chart) return;
+
+        const baseData = chart.__baseMarkLineData ?? [];
+        const selectedData = chart.__selectedMarkLineData ?? [];
+        const allClimbsData = chart.__allClimbsMarkLineData ?? [];
+
+        const combinedData = [
+            ...baseData,
+            ...selectedData,
+            ...allClimbsData
+        ];
+
+        chart.setOption({
+            series: [{
+                markLine: {
+                    silent: true,
+                    symbol: ["none", "none"],
+                    animation: false,
+                    label: {
+                        show: true
+                    },
+                    lineStyle: {
+                        width: 1
+                    },
+                    data: combinedData
+                }
+            }]
+        }, false);
     }
 
     function baseOption(title, unit, series, extra) {
@@ -439,7 +473,7 @@ window.flightCharts = (function () {
                 type: "value",
                 min: 0,
                 max: function (value) {
-                    return Math.ceil(value.max / timeInterval) * timeInterval;
+                    return value.max + Math.min(120, Math.max(30, value.max * 0.01));
                 },
                 interval: timeInterval,
                 axisLine: {
@@ -498,16 +532,17 @@ window.flightCharts = (function () {
                     showSymbol: false,
                     data: series,
                     lineStyle: extra.lineStyle,
-                    areaStyle: extra.areaStyle ?? undefined
+                    areaStyle: extra.areaStyle ?? undefined,
+                    markLine: extra.markLine ?? undefined
                 }
             ]
         };
     }
 
     function getTimeAxisInterval(maxSeconds) {
-        if (maxSeconds <= 60 * 60) return 600;        // bis 1h -> 10 min
-        if (maxSeconds <= 3 * 60 * 60) return 1800;   // bis 3h -> 30 min
-        return 3600;                                  // darüber -> 60 min
+        if (maxSeconds <= 60 * 60) return 600;
+        if (maxSeconds <= 3 * 60 * 60) return 1800;
+        return 3600;
     }
 
     function formatValue(value, unit) {
@@ -541,7 +576,13 @@ window.flightCharts = (function () {
         const series = buildSeriesData(xValues, yValues);
         chart.__seriesData = series;
 
+        chart.__baseMarkLineData = extra.markLine?.data ?? [];
+        chart.__selectedMarkLineData = [];
+        chart.__allClimbsMarkLineData = [];
+
         chart.setOption(baseOption(title, unit, series, extra), true);
+        applyCombinedMarkLine(chart);
+
         requestAnimationFrame(() => chart.resize());
     }
 
@@ -554,19 +595,11 @@ window.flightCharts = (function () {
         if (!seriesData || seriesData.length === 0)
             return;
 
-        const markLine = buildSelectedClimbMarkLine(seriesData, payload);
-
-        chart.setOption({
-            series: [
-                {
-                    markLine: markLine ?? { data: [] }
-                }
-            ]
-        }, false);
+        chart.__selectedMarkLineData = buildSelectedClimbMarkLine(seriesData, payload);
+        applyCombinedMarkLine(chart);
     }
 
     function updateAllClimbsOne(elementId, payload) {
-
         const chart = instances[elementId];
         if (!chart) return;
 
@@ -575,18 +608,14 @@ window.flightCharts = (function () {
             return;
 
         if (!payload.showAllClimbs) {
-            chart.setOption({
-                series: [{
-                    markLine: { data: [] }
-                }]
-            }, false);
+            chart.__allClimbsMarkLineData = [];
+            applyCombinedMarkLine(chart);
             return;
         }
 
         const lines = [];
 
         for (let i = 0; i < payload.begin.length; i++) {
-
             const begin = payload.begin[i];
             const end = payload.end[i];
 
@@ -598,31 +627,25 @@ window.flightCharts = (function () {
             const color = colors[i % colors.length];
 
             lines.push(
-                { xAxis: p1[0], lineStyle: { color, type: "dashed", width: 1 } },
-                { xAxis: p2[0], lineStyle: { color, type: "dashed", width: 1 } }
+                {
+                    xAxis: p1[0],
+                    lineStyle: { color, type: "dashed", width: 1 }
+                },
+                {
+                    xAxis: p2[0],
+                    lineStyle: { color, type: "dashed", width: 1 }
+                }
             );
         }
 
-        chart.setOption({
-            series: [{
-                markLine: {
-                    silent: true,
-                    symbol: ["none", "none"],
-                    label: {
-                        show: false
-                    },
-                    data: lines
-                }
-            }]
-        }, false);
+        chart.__allClimbsMarkLineData = lines;
+        applyCombinedMarkLine(chart);
     }
 
     function updateAllClimbs(altId, varioId, speedId, payload) {
-
         updateAllClimbsOne(altId, payload);
         updateAllClimbsOne(varioId, payload);
         updateAllClimbsOne(speedId, payload);
-
     }
 
     function updateHoveredClimb(altChartId, varioChartId, speedChartId, payload) {
@@ -646,8 +669,6 @@ window.flightCharts = (function () {
 
         if (index != null) {
             const baseColor = colors[index % colors.length];
-
-            // HEX → RGBA (mit Transparenz)
             fillColor = hexToRgba(baseColor, 0.3);
         }
 
@@ -709,7 +730,23 @@ window.flightCharts = (function () {
             payload.timeSec,
             payload.speedValues,
             {
-                lineStyle: { width: 1, color: "#2563eb" }
+                lineStyle: { width: 1, color: "#2563eb" },
+                markLine: {
+                    data: [
+                        {
+                            yAxis: 38,
+                            label: {
+                                show: true,
+                                formatter: "Trim 38 km/h"
+                            },
+                            lineStyle: {
+                                type: "dashed",
+                                width: 2,
+                                color: "#ef4444"
+                            }
+                        }
+                    ]
+                }
             }
         );
 
