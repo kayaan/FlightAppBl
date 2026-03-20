@@ -74,6 +74,22 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             preferCanvas: true
         });
 
+        if (!map.getPane("trackPane")) {
+            map.createPane("trackPane");
+        }
+
+        if (!map.getPane("climbPane")) {
+            map.createPane("climbPane");
+        }
+
+        if (!map.getPane("cursorPane")) {
+            map.createPane("cursorPane");
+        }
+
+        map.getPane("trackPane").style.zIndex = 400;
+        map.getPane("climbPane").style.zIndex = 450;
+        map.getPane("cursorPane").style.zIndex = 500;
+
         const roadLayer = createRoadLayer();
         const topoLayer = createTopoLayer();
 
@@ -88,8 +104,13 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             startMarker: null,
             endMarker: null,
             cursorMarker: null,
+            cursorHalo: null,
             hoveredClimbLayer: null,
+            hoveredClimbHalo: null,
+            hoveredClimbLine: null,
             selectedClimbLayer: null,
+            selectedClimbHalo: null,
+            selectedClimbLine: null,
             latE7: null,
             lonE7: null,
             lastHoverTrackIndex: -1,
@@ -134,7 +155,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             instance,
             beginIndex,
             endIndex,
-            "#facc15",
+            "#e9d378",
             lineWeight,
             opacity
         );
@@ -159,7 +180,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             endIndex: payload?.endIndex,
             color: "#ef4444",
             haloWeight: 12,
-            lineWeight: 6,
+            lineWeight:4,
             opacity: 1.0,
             layerKey: "selectedClimb"
         });
@@ -182,7 +203,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             endIndex,
             color,
             haloWeight: 10,
-            lineWeight: 5,
+            lineWeight: 3,
             opacity: 0.9,
             layerKey: "hoveredClimb"
         });
@@ -224,7 +245,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             color,
             weight,
             opacity,
-            interactive: false
+            interactive: false,
+            pane: "climbPane"
         });
     }
 
@@ -286,6 +308,16 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             instance.map.removeLayer(instance.cursorMarker);
             instance.cursorMarker = null;
         }
+
+        if (instance.cursorHalo) {
+            instance.map.removeLayer(instance.cursorHalo);
+            instance.cursorHalo = null;
+        }
+
+        instance.hoveredClimbHalo = removeLayer(instance.map, instance.hoveredClimbHalo);
+        instance.hoveredClimbLine = removeLayer(instance.map, instance.hoveredClimbLine);
+        instance.selectedClimbHalo = removeLayer(instance.map, instance.selectedClimbHalo);
+        instance.selectedClimbLine = removeLayer(instance.map, instance.selectedClimbLine);
 
         instance.latE7 = null;
         instance.lonE7 = null;
@@ -479,7 +511,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             L.polyline(segment.latLngs, {
                 weight: 4,
                 color: segment.color,
-                interactive: false
+                interactive: false,
+                pane: "trackPane"
             }).addTo(instance.trackLayer);
         }
 
@@ -488,7 +521,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             color: "#16a34a",
             fillColor: "#16a34a",
             fillOpacity: 1,
-            weight: 2
+            weight: 2,
+            pane: "cursorPane"
         })
             .addTo(instance.map)
             .bindTooltip("Takeoff");
@@ -498,19 +532,20 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             color: "#dc2626",
             fillColor: "#dc2626",
             fillOpacity: 1,
-            weight: 2
+            weight: 2,
+            pane: "cursorPane"
         })
             .addTo(instance.map)
             .bindTooltip("Landing");
 
         instance.cursorMarker = L.circleMarker(latLngs[0], {
             radius: 7,
-            color: "#000000",        // schwarzer Rand → maximaler Kontrast
+            color: "#000000",
             weight: 3,
             opacity: 0,
-
-            fillColor: "#fff200",    // leuchtendes Gelb
-            fillOpacity: 0
+            fillColor: "#fff200",
+            fillOpacity: 0,
+            pane: "cursorPane"
         }).addTo(instance.map);
 
         instance.cursorHalo = L.circleMarker(latLngs[0], {
@@ -520,7 +555,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             fillColor: "#fff200",
             fillOpacity: 0,
             opacity: 0,
-            interactive: false
+            interactive: false,
+            pane: "cursorPane"
         }).addTo(instance.map);
 
         instance.map.off("mousemove");
@@ -636,8 +672,10 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         const instance = instances[elementId];
         if (!instance) return;
 
-        instance.hoveredClimbLayer = removeLayer(instance.map, instance.hoveredClimbLayer);
-        instance.selectedClimbLayer = removeLayer(instance.map, instance.selectedClimbLayer);
+        instance.hoveredClimbHalo = removeLayer(instance.map, instance.hoveredClimbHalo);
+        instance.hoveredClimbLine = removeLayer(instance.map, instance.hoveredClimbLine);
+        instance.selectedClimbHalo = removeLayer(instance.map, instance.selectedClimbHalo);
+        instance.selectedClimbLine = removeLayer(instance.map, instance.selectedClimbLine);
 
         instance.map.remove();
         delete instances[elementId];
