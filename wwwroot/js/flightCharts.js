@@ -416,13 +416,13 @@ window.flightCharts = (function () {
                 triggerTooltip: false
             },
 
-grid: {
-    left: 64,
-    right: 14,
-    top: 28,
-    bottom: 40,
-    containLabel: false
-},
+            grid: {
+                left: 64,
+                right: 14,
+                top: 28,
+                bottom: 40,
+                containLabel: false
+            },
             title: {
                 text: title,
                 left: 12,
@@ -526,15 +526,13 @@ grid: {
                 }
             },
 
-yAxis: {
-    type: "value",
-    min: extra.yMin,
-    max: extra.yMax,
-    interval: extra.yInterval,
-    axisLabel: {
-        color: "#64748b"
-    }
-},
+            yAxis: {
+                type: "value",
+                interval: extra.yInterval,
+                axisLabel: {
+                    color: "#64748b"
+                }
+            },
 
             dataZoom: [
                 {
