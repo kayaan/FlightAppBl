@@ -2,7 +2,7 @@ window.flightCharts = (function () {
 
     const instances = {};
     const chartGroup = "flight-charts-sync-group";
-
+    const alpha = 0.02;
     const colors = [
         "#2563eb",
         "#16a34a",
@@ -34,6 +34,19 @@ window.flightCharts = (function () {
         const b = parseInt(hex.substring(5, 7), 16);
 
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function computeEma(values, alpha) {
+        if (!values || values.length === 0) return [];
+
+        const result = new Array(values.length);
+        result[0] = values[0];
+
+        for (let i = 1; i < values.length; i++) {
+            result[i] = alpha * values[i] + (1 - alpha) * result[i - 1];
+        }
+
+        return result;
     }
 
     function registerSelectionCallback(dotNetRef) {
@@ -403,13 +416,13 @@ window.flightCharts = (function () {
                 triggerTooltip: false
             },
 
-            grid: {
-                left: 52,
-                right: 14,
-                top: 28,
-                bottom: 40,
-                containLabel: true
-            },
+grid: {
+    left: 64,
+    right: 14,
+    top: 28,
+    bottom: 40,
+    containLabel: false
+},
             title: {
                 text: title,
                 left: 12,
@@ -513,9 +526,15 @@ window.flightCharts = (function () {
                 }
             },
 
-            yAxis: {
-                type: "value"
-            },
+yAxis: {
+    type: "value",
+    min: extra.yMin,
+    max: extra.yMax,
+    interval: extra.yInterval,
+    axisLabel: {
+        color: "#64748b"
+    }
+},
 
             dataZoom: [
                 {
@@ -708,20 +727,65 @@ window.flightCharts = (function () {
             payload.altitudeValues,
             {
                 lineStyle: { width: 1, color: "#2563eb" },
-                areaStyle: { opacity: 0.08 }
+                areaStyle: { opacity: 0.08 },
+                yMin: 0,
+                yMax: 2500,
+                yInterval: 500
             }
         );
 
-        renderOne(
-            varioId,
-            payload.varioTitle,
-            payload.varioUnit,
-            payload.timeSec,
-            payload.varioValues,
-            {
-                lineStyle: { width: 1, color: "#2563eb" }
-            }
-        );
+        const varioChart = ensureChart(varioId);
+        if (varioChart && payload.timeSec && payload.varioValues) {
+            const rawSeries = buildSeriesData(payload.timeSec, payload.varioValues);
+            const smoothValues = computeEma(payload.varioValues, alpha);
+            const smoothSeries = buildSeriesData(payload.timeSec, smoothValues);
+
+            varioChart.__seriesData = rawSeries;
+            varioChart.__baseMarkLineData = [];
+            varioChart.__selectedMarkLineData = [];
+            varioChart.__allClimbsMarkLineData = [];
+
+            const option = baseOption(
+                payload.varioTitle,
+                payload.varioUnit,
+                rawSeries,
+                {
+                    yMin: -3,
+                    yMax: 3,
+                    yInterval: 1
+                }
+            );
+
+            option.series = [
+                {
+                    name: "raw",
+                    type: "line",
+                    showSymbol: false,
+                    data: rawSeries,
+                    lineStyle: {
+                        width: 1,
+                        color: "#2563eb"
+                    },
+                    z: 1
+                },
+                {
+                    name: "smooth",
+                    type: "line",
+                    showSymbol: false,
+                    data: smoothSeries,
+                    lineStyle: {
+                        width: 1,
+                        color: "#ef4444"
+                    },
+                    z: 3
+                }
+            ];
+
+            varioChart.setOption(option, true);
+            applyCombinedMarkLine(varioChart);
+
+            requestAnimationFrame(() => varioChart.resize());
+        }
 
         renderOne(
             speedId,
@@ -731,6 +795,9 @@ window.flightCharts = (function () {
             payload.speedValues,
             {
                 lineStyle: { width: 1, color: "#2563eb" },
+                yMin: 0,
+                yMax: 60,
+                yInterval: 10,
                 markLine: {
                     data: [
                         {
