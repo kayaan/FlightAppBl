@@ -249,7 +249,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
 
         <div><span style="background:#b30000"></span> &gt; 1.5 m/s</div>
         <div><span style="background:#ff3030"></span> 0.3 – 1.5</div>
-        <div><span style="background:#9ca3af"></span> -0.3 – 0.3</div>
+        <div><span style="background:#38bdf8"></span> -0.3 – 0.3</div>
         <div><span style="background:#2a62ff"></span> -1.5 – -0.3</div>
         <div><span style="background:#0038d9"></span> &lt; -1.5</div>
         `;
@@ -322,7 +322,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             return "#ff3030";
 
         if (v >= -0.3)
-            return "#9ca3af";
+            return "#38bdf8";
 
         if (v >= -1.5)
             return "#2a62ff";
