@@ -22,34 +22,28 @@
 
     .app-toast {
         width: 100%;
-
         padding: 12px 14px;
-
         border-radius: 10px;
 
         color: #ffffff;
         font-size: 14px;
         font-weight: 600;
-        line-height: 1.35;
 
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.12);
 
-        /* Animation */
-        animation: slideIn 0.25s ease-out;
+        opacity: 0;
+        transform: translateX(120%);
+        animation: slideIn 0.25s ease-out forwards;
     }
 
-    .app-toast-success {
-        background: #16a34a;
+    .app-toast.fade-out {
+        animation: fadeOut 0.4s ease-in forwards;
     }
 
-    .app-toast-info {
-        background: #0284c7;
-    }
-
-    .app-toast-error {
-        background: #dc2626;
-    }
+    .app-toast-success { background: #16a34a; }
+    .app-toast-info { background: #0284c7; }
+    .app-toast-error { background: #dc2626; }
 
     @@keyframes slideIn {
         from {
@@ -61,34 +55,103 @@
             opacity: 1;
         }
     }
+
+    @@keyframes fadeOut {
+        from {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(120%);
+        }
+    }
 </style>
 
 <div class="app-toast-container">
     @foreach (var toast in toasts)
     {
-        <div class="app-toast @GetCssClass(toast.Type)">
+        <div class="app-toast @(toast.IsClosing ? "fade-out" : "") @GetCssClass(toast.Type)"
+             @onmouseenter="() => Pause(toast)"
+             @onmouseleave="() => Resume(toast)">
             @toast.Text
         </div>
     }
 </div>
 
 @code {
-    private readonly List<ToastMessage> toasts = new();
+    private readonly List<ToastItem> toasts = new();
+    private const int MaxToasts = 3;
 
     protected override void OnInitialized()
     {
         ToastService.OnShow += ShowToast;
     }
 
-    private async void ShowToast(ToastMessage toast)
+    private void ShowToast(ToastMessage msg)
     {
+        var toast = new ToastItem
+        {
+            Text = msg.Text,
+            Type = msg.Type
+        };
+
+        // max 3 gleichzeitig
+        if (toasts.Count >= MaxToasts)
+        {
+            RemoveToast(toasts[0]);
+        }
+
         toasts.Add(toast);
-        await InvokeAsync(StateHasChanged);
+        StateHasChanged();
 
-        await Task.Delay(3000);
+        _ = RunLifetime(toast);
+    }
 
+    private async Task RunLifetime(ToastItem toast)
+    {
+        try
+        {
+            await Task.Delay(toast.RemainingMs, toast.Cts.Token);
+
+            toast.IsClosing = true;
+            await InvokeAsync(StateHasChanged);
+
+            await Task.Delay(400); // fadeOut duration
+
+            RemoveToast(toast);
+        }
+        catch (TaskCanceledException)
+        {
+            // ignore
+        }
+    }
+
+    private void Pause(ToastItem toast)
+    {
+        if (toast.IsPaused) return;
+
+        toast.IsPaused = true;
+        toast.Cts.Cancel();
+
+        toast.RemainingMs -= (int)(DateTime.UtcNow - toast.StartTime).TotalMilliseconds;
+    }
+
+    private void Resume(ToastItem toast)
+    {
+        if (!toast.IsPaused) return;
+
+        toast.IsPaused = false;
+        toast.Cts = new CancellationTokenSource();
+        toast.StartTime = DateTime.UtcNow;
+
+        _ = RunLifetime(toast);
+    }
+
+    private void RemoveToast(ToastItem toast)
+    {
         toasts.Remove(toast);
-        await InvokeAsync(StateHasChanged);
+        InvokeAsync(StateHasChanged);
     }
 
     private static string GetCssClass(ToastType type) => type switch
@@ -102,5 +165,21 @@
     public void Dispose()
     {
         ToastService.OnShow -= ShowToast;
+    }
+
+    private class ToastItem
+    {
+        public string Text { get; set; } = "";
+        public ToastType Type { get; set; }
+
+        public bool IsClosing { get; set; }
+
+        public bool IsPaused { get; set; }
+
+        public int RemainingMs { get; set; } = 3000;
+
+        public DateTime StartTime { get; set; } = DateTime.UtcNow;
+
+        public CancellationTokenSource Cts { get; set; } = new();
     }
 }

@@ -236,25 +236,86 @@
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         var files = e.GetMultipleFiles();
-        var contents = new List<string>();
+
+        if (files.Count == 0)
+        {
+            ToastService.Show("No file selected.", ToastType.Info);
+            return;
+        }
+
+        var importContents = new List<string>();
+        var importFileNames = new List<string>();
 
         foreach (var file in files)
         {
-            using var stream = file.OpenReadStream();
-            using var reader = new StreamReader(stream);
-            contents.Add(await reader.ReadToEndAsync());
+            try
+            {
+                if (!file.Name.EndsWith(".igc", StringComparison.OrdinalIgnoreCase))
+                {
+                    ToastService.Show($"{file.Name}: Only .igc files are allowed.", ToastType.Error);
+                    continue;
+                }
+
+                if (file.Size <= 0)
+                {
+                    ToastService.Show($"{file.Name}: File is empty.", ToastType.Error);
+                    continue;
+                }
+
+                using var stream = file.OpenReadStream(10 * 1024 * 1024);
+                using var reader = new StreamReader(stream);
+
+                var content = await reader.ReadToEndAsync();
+
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    ToastService.Show($"{file.Name}: File is empty.", ToastType.Error);
+                    continue;
+                }
+
+                importContents.Add(content);
+                importFileNames.Add(file.Name);
+            }
+            catch (Exception)
+            {
+                ToastService.Show($"{file.Name}: Could not read file.", ToastType.Error);
+            }
         }
 
-        await FlightService.ImportFilesAsync(contents);
+        if (importContents.Count == 0)
+            return;
+
+        for (var i = 0; i < importContents.Count; i++)
+        {
+            var fileName = importFileNames[i];
+            var content = importContents[i];
+
+            try
+            {
+                await FlightService.ImportFilesAsync(new List<string> { content });
+                ToastService.Show($"{fileName}: Flight imported.", ToastType.Success);
+            }
+            catch (InvalidOperationException ex) when (
+                ex.Message.Contains("exists", StringComparison.OrdinalIgnoreCase) ||
+                ex.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase))
+            {
+                ToastService.Show($"{fileName}: Flight already exists.", ToastType.Info);
+            }
+            catch (FormatException)
+            {
+                ToastService.Show($"{fileName}: Invalid IGC file.", ToastType.Error);
+            }
+            catch (Exception)
+            {
+                ToastService.Show($"{fileName}: Import failed.", ToastType.Error);
+            }
+        }
+
         flights = await FlightService.GetFlightsAsync();
     }
 
     private async Task SortBy(FlightSortColumn column)
     {
-
-        ToastService.Show("Flight imported", ToastType.Success);
-        ToastService.Show("Flight already exists", ToastType.Info);
-        ToastService.Show("Invalid IGC file", ToastType.Error);
 
         if (sortColumn == column)
         {
