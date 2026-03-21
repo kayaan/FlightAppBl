@@ -42,30 +42,62 @@
                 <table class="flights-table">
                     <thead>
                         <tr>
-                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Date)">
-                                Date @SortIndicator(FlightSortColumn.Date)
+                            <th class="sortable @(sortColumn == FlightSortColumn.Date ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Date)">
+                                <span class="th-content">
+                                    <span>Date</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Date)</span>
+                                </span>
                             </th>
-                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Start)">
-                                Start @SortIndicator(FlightSortColumn.Start)
+
+                            <th class="sortable @(sortColumn == FlightSortColumn.Start ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Start)">
+                                <span class="th-content">
+                                    <span>Start</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Start)</span>
+                                </span>
                             </th>
-                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Pilot)">
-                                Pilot @SortIndicator(FlightSortColumn.Pilot)
+
+                            <th class="sortable @(sortColumn == FlightSortColumn.Pilot ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Pilot)">
+                                <span class="th-content">
+                                    <span>Pilot</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Pilot)</span>
+                                </span>
                             </th>
-                            <th class="sortable" @onclick="() => SortBy(FlightSortColumn.Glider)">
-                                Glider @SortIndicator(FlightSortColumn.Glider)
+
+                            <th class="sortable @(sortColumn == FlightSortColumn.Glider ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Glider)">
+                                <span class="th-content">
+                                    <span>Glider</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Glider)</span>
+                                </span>
                             </th>
-                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Duration)">
-                                Duration @SortIndicator(FlightSortColumn.Duration)
+
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Duration ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Duration)">
+                                <span class="th-content">
+                                    <span>Duration</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Duration)</span>
+                                </span>
                             </th>
-                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Distance)">
-                                Distance @SortIndicator(FlightSortColumn.Distance)
+
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Distance ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Distance)">
+                                <span class="th-content">
+                                    <span>Distance</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Distance)</span>
+                                </span>
                             </th>
-                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Altitude)">
-                                Altitude @SortIndicator(FlightSortColumn.Altitude)
+
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Altitude ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Altitude)">
+                                <span class="th-content">
+                                    <span>Altitude</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Altitude)</span>
+                                </span>
                             </th>
-                            <th class="num sortable" @onclick="() => SortBy(FlightSortColumn.Climb)">
-                                Climb @SortIndicator(FlightSortColumn.Climb)
+
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Climb ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Climb)">
+                                <span class="th-content">
+                                    <span>Climb</span>
+                                    <span class="sort-icon">@SortIndicator(FlightSortColumn.Climb)</span>
+                                </span>
                             </th>
+
                             <th class="actions">Actions</th>
                         </tr>
                     </thead>
@@ -96,14 +128,16 @@
                                 <td class="num">
                                     <div class="main-value">@FormatDistanceKm(flight.Stats.TotalDistanceMeters)</div>
                                 </td>
+
                                 <td class="num">
                                     <div class="alt-pair">
-                                        <span                            class="alt-num">@FormatAltitudeNumber(GetPreferredMaxAltitude(flight.Stats))</span>
+                                        <span class="alt-num">@FormatAltitudeNumber(GetPreferredMaxAltitude(flight.Stats))</span>
                                         <span class="alt-sep">/</span>
-                                        <span                            class="alt-num">@FormatAltitudeNumber(GetPreferredMinAltitude(flight.Stats))</span>
+                                        <span class="alt-num">@FormatAltitudeNumber(GetPreferredMinAltitude(flight.Stats))</span>
                                         <span class="alt-unit">m</span>
                                     </div>
                                 </td>
+
                                 <td class="num">
                                     <div class="climb-pair">
                                         <span class="climb-num">@FormatClimbNumber(flight.Stats.MaxVarioMs)</span>
@@ -112,15 +146,20 @@
                                         <span class="climb-unit">m/s</span>
                                     </div>
                                 </td>
+
                                 <td class="actions-cell">
                                     <div class="action-group">
-                                        <button class="table-action table-action-open"                                                title="Open flight"
-                                                @onclick="() => OpenFlight(flight.Id)"                                                @onclick:stopPropagation="true">
+                                        <button class="table-action table-action-open"
+                                                title="Open flight"
+                                                @onclick="() => OpenFlight(flight.Id)"
+                                                @onclick:stopPropagation="true">
                                             Open
                                         </button>
 
-                                        <button class="table-action table-action-delete"                                                title="Delete flight"
-                                                @onclick="() => OnDeleteClick(flight.Id)"                                                @onclick:stopPropagation="true">
+                                        <button class="table-action table-action-delete"
+                                                title="Delete flight"
+                                                @onclick="() => OnDeleteClick(flight.Id)"
+                                                @onclick:stopPropagation="true">
                                             Delete
                                         </button>
                                     </div>
@@ -210,8 +249,6 @@
         }
     }
 
-
-
     private IEnumerable<Flight> GetSortedFlights()
     {
         IEnumerable<Flight> query = sortColumn switch
@@ -260,7 +297,7 @@
     private string SortIndicator(FlightSortColumn column)
     {
         if (sortColumn != column)
-            return "⇅"; // unsorted
+            return "⇅";
 
         return sortDescending ? "↓" : "↑";
     }
