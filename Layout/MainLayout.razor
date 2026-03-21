@@ -1,13 +1,14 @@
-﻿@inherits LayoutComponentBase
+﻿@* Layout\MainLayout.razor *@
+@inherits LayoutComponentBase
 
 <div class="app">
-
     <header class="topbar">
         <h2>FlightApp</h2>
     </header>
-
+              
     <main class="content">
         @Body
     </main>
-
 </div>
+
+<ToastContainer />                            

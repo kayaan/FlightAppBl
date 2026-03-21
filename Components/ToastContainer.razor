@@ -1,0 +1,106 @@
+@namespace FlightApp.Components
+@using FlightApp.Services
+@inject ToastService ToastService
+
+@implements IDisposable
+
+<style>
+    .app-toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 999999;
+
+        width: 320px;
+
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        align-items: flex-end;
+    }
+
+    .app-toast {
+        width: 100%;
+
+        padding: 12px 14px;
+
+        border-radius: 10px;
+
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.35;
+
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+
+        /* Animation */
+        animation: slideIn 0.25s ease-out;
+    }
+
+    .app-toast-success {
+        background: #16a34a;
+    }
+
+    .app-toast-info {
+        background: #0284c7;
+    }
+
+    .app-toast-error {
+        background: #dc2626;
+    }
+
+    @@keyframes slideIn {
+        from {
+            transform: translateX(120%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+</style>
+
+<div class="app-toast-container">
+    @foreach (var toast in toasts)
+    {
+        <div class="app-toast @GetCssClass(toast.Type)">
+            @toast.Text
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ToastMessage> toasts = new();
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += ShowToast;
+    }
+
+    private async void ShowToast(ToastMessage toast)
+    {
+        toasts.Add(toast);
+        await InvokeAsync(StateHasChanged);
+
+        await Task.Delay(3000);
+
+        toasts.Remove(toast);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetCssClass(ToastType type) => type switch
+    {
+        ToastType.Success => "app-toast-success",
+        ToastType.Info => "app-toast-info",
+        ToastType.Error => "app-toast-error",
+        _ => "app-toast-info"
+    };
+
+    public void Dispose()
+    {
+        ToastService.OnShow -= ShowToast;
+    }
+}

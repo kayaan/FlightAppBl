@@ -19,5 +19,6 @@ builder.Services.AddScoped<FlightService>();
 builder.Services.AddScoped<FlightDetailsLoadService>();
 builder.Services.AddScoped<FlightDetailsSelectionService>();
 builder.Services.AddScoped<IKeyValueStorage, LocalStorageKeyValueStorage>();
+builder.Services.AddScoped<ToastService>();
 
 await builder.Build().RunAsync();
