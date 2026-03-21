@@ -18,5 +18,6 @@ builder.Services.AddScoped<FlightStatsCalculator>();
 builder.Services.AddScoped<FlightService>();
 builder.Services.AddScoped<FlightDetailsLoadService>();
 builder.Services.AddScoped<FlightDetailsSelectionService>();
+builder.Services.AddScoped<IKeyValueStorage, LocalStorageKeyValueStorage>();
 
 await builder.Build().RunAsync();

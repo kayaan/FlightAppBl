@@ -9,6 +9,8 @@
 @inject IJSRuntime JS
 @inject FlightService FlightService
 
+@inject IKeyValueStorage KeyValueStorage
+
 @inject NavigationManager Nav
 
 <PageTitle>Flights</PageTitle>
@@ -42,56 +44,64 @@
                 <table class="flights-table">
                     <thead>
                         <tr>
-                            <th class="sortable @(sortColumn == FlightSortColumn.Date ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Date)">
+                            <th class="sortable @(sortColumn == FlightSortColumn.Date ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Date)">
                                 <span class="th-content">
                                     <span>Date</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Date)</span>
                                 </span>
                             </th>
 
-                            <th class="sortable @(sortColumn == FlightSortColumn.Start ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Start)">
+                            <th class="sortable @(sortColumn == FlightSortColumn.Start ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Start)">
                                 <span class="th-content">
                                     <span>Start</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Start)</span>
                                 </span>
                             </th>
 
-                            <th class="sortable @(sortColumn == FlightSortColumn.Pilot ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Pilot)">
+                            <th class="sortable @(sortColumn == FlightSortColumn.Pilot ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Pilot)">
                                 <span class="th-content">
                                     <span>Pilot</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Pilot)</span>
                                 </span>
                             </th>
 
-                            <th class="sortable @(sortColumn == FlightSortColumn.Glider ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Glider)">
+                            <th class="sortable @(sortColumn == FlightSortColumn.Glider ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Glider)">
                                 <span class="th-content">
                                     <span>Glider</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Glider)</span>
                                 </span>
                             </th>
 
-                            <th class="num sortable @(sortColumn == FlightSortColumn.Duration ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Duration)">
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Duration ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Duration)">
                                 <span class="th-content">
                                     <span>Duration</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Duration)</span>
                                 </span>
                             </th>
 
-                            <th class="num sortable @(sortColumn == FlightSortColumn.Distance ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Distance)">
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Distance ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Distance)">
                                 <span class="th-content">
                                     <span>Distance</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Distance)</span>
                                 </span>
                             </th>
 
-                            <th class="num sortable @(sortColumn == FlightSortColumn.Altitude ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Altitude)">
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Altitude ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Altitude)">
                                 <span class="th-content">
                                     <span>Altitude</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Altitude)</span>
                                 </span>
                             </th>
 
-                            <th class="num sortable @(sortColumn == FlightSortColumn.Climb ? "active" : null)" @onclick="() => SortBy(FlightSortColumn.Climb)">
+                            <th class="num sortable @(sortColumn == FlightSortColumn.Climb ? "active" : null)"
+                                @onclick="async () => await SortBy(FlightSortColumn.Climb)">
                                 <span class="th-content">
                                     <span>Climb</span>
                                     <span class="sort-icon">@SortIndicator(FlightSortColumn.Climb)</span>
@@ -101,6 +111,7 @@
                             <th class="actions">Actions</th>
                         </tr>
                     </thead>
+
                     <tbody>
                         @foreach (var flight in GetSortedFlights())
                         {
@@ -131,9 +142,9 @@
 
                                 <td class="num">
                                     <div class="alt-pair">
-                                        <span class="alt-num">@FormatAltitudeNumber(GetPreferredMaxAltitude(flight.Stats))</span>
+                                        <span                            class="alt-num">@FormatAltitudeNumber(GetPreferredMaxAltitude(flight.Stats))</span>
                                         <span class="alt-sep">/</span>
-                                        <span class="alt-num">@FormatAltitudeNumber(GetPreferredMinAltitude(flight.Stats))</span>
+                                        <span                            class="alt-num">@FormatAltitudeNumber(GetPreferredMinAltitude(flight.Stats))</span>
                                         <span class="alt-unit">m</span>
                                     </div>
                                 </td>
@@ -149,17 +160,13 @@
 
                                 <td class="actions-cell">
                                     <div class="action-group">
-                                        <button class="table-action table-action-open"
-                                                title="Open flight"
-                                                @onclick="() => OpenFlight(flight.Id)"
-                                                @onclick:stopPropagation="true">
+                                        <button class="table-action table-action-open" title="Open flight"
+                                                @onclick="() => OpenFlight(flight.Id)" @onclick:stopPropagation="true">
                                             Open
                                         </button>
 
-                                        <button class="table-action table-action-delete"
-                                                title="Delete flight"
-                                                @onclick="() => OnDeleteClick(flight.Id)"
-                                                @onclick:stopPropagation="true">
+                                        <button class="table-action table-action-delete" title="Delete flight"
+                                                @onclick="() => OnDeleteClick(flight.Id)" @onclick:stopPropagation="true">
                                             Delete
                                         </button>
                                     </div>
@@ -183,6 +190,17 @@
     protected override async Task OnInitializedAsync()
     {
         flights = await FlightService.GetFlightsAsync();
+
+        var state = await KeyValueStorage.GetOrDefaultAsync(
+            AppStorageKeys.FlightsTableState,
+            new FlightsTableState());
+
+        if (Enum.TryParse<FlightSortColumn>(state.SortColumn, ignoreCase: true, out var parsedColumn))
+        {
+            sortColumn = parsedColumn;
+        }
+
+        sortDescending = state.SortDescending;
     }
 
     private async Task OpenImport()
@@ -227,7 +245,7 @@
         flights = await FlightService.GetFlightsAsync();
     }
 
-    private void SortBy(FlightSortColumn column)
+    private async Task SortBy(FlightSortColumn column)
     {
         if (sortColumn == column)
         {
@@ -247,6 +265,14 @@
                 _ => false
             };
         }
+
+        await KeyValueStorage.SetAsync(
+            AppStorageKeys.FlightsTableState,
+            new FlightsTableState
+            {
+                SortColumn = sortColumn.ToString(),
+                SortDescending = sortDescending
+            });
     }
 
     private IEnumerable<Flight> GetSortedFlights()
@@ -339,24 +365,6 @@
 
     private static int? GetPreferredMinAltitude(FlightStats stats)
         => stats.AltBaroMin ?? stats.AltGpsMin;
-
-    private static string FormatAltitudeMax(FlightStats stats)
-    {
-        var value = GetPreferredMaxAltitude(stats);
-        return value.HasValue ? $"{value.Value,4}" : "—";
-    }
-
-    private static string FormatAltitudeMin(FlightStats stats)
-    {
-        var value = GetPreferredMinAltitude(stats);
-        return value.HasValue ? $"{value.Value,4}" : "—";
-    }
-
-    private static string FormatMaxClimb(double? value)
-        => value.HasValue ? $"{value.Value:+0.0;-0.0;0.0} m/s" : "—";
-
-    private static string FormatMinClimb(double? value)
-        => value.HasValue ? $"{value.Value:+0.0;-0.0;0.0} m/s" : "—";
 
     private static string FormatAltitudeNumber(int? value)
         => value.HasValue ? value.Value.ToString() : "—";
