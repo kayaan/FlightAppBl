@@ -315,15 +315,46 @@
 
 
 .import-progress {
-    margin-bottom: 16px;
-    font-size: 0.9rem;
+    min-width: 320px;
+    max-width: 460px;
+    padding: 12px 14px;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #eff6ff, #f8fbff);
+}
+
+.import-progress-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e3a8a;
+}
+
+.import-progress-file {
+    margin-top: 4px;
+    font-size: 0.84rem;
+    color: #334155;
+    word-break: break-word;
+}
+
+.import-progress-message {
+    margin-top: 2px;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.import-progress-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 0.82rem;
     color: #475569;
 }
 
 .progress-bar {
-    margin-top: 6px;
-    height: 6px;
-    background: #e5e7eb;
+    margin-top: 10px;
+    height: 8px;
+    background: #dbeafe;
     border-radius: 999px;
     overflow: hidden;
 }

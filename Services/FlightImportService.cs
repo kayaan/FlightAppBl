@@ -48,84 +48,108 @@ public class FlightImportService
             return;
         }
 
+        const int maxParallelism = 4;
+
         _importState.Start(files.Count);
+        _importState.SetMessage("Processing multiple files...");
 
         try
         {
-            foreach (var file in files)
+            using var semaphore = new SemaphoreSlim(maxParallelism);
+
+            var tasks = files.Select(async file =>
             {
-                _importState.SetCurrentFile(file.Name, "Reading file...");
-                await Task.Yield();
+                await semaphore.WaitAsync();
 
                 try
                 {
-                    if (!file.Name.EndsWith(".igc", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _toastService.Show($"{file.Name}: Only .igc files are allowed.", ToastType.Error);
-                        continue;
-                    }
-
-                    if (file.Size <= 0)
-                    {
-                        _toastService.Show($"{file.Name}: File is empty.", ToastType.Error);
-                        continue;
-                    }
-
-                    using var stream = file.OpenReadStream(10 * 1024 * 1024);
-                    using var reader = new StreamReader(stream);
-
-                    var content = await reader.ReadToEndAsync();
-
-                    if (string.IsNullOrWhiteSpace(content))
-                    {
-                        _toastService.Show($"{file.Name}: File is empty.", ToastType.Error);
-                        continue;
-                    }
-
-                    _importState.SetMessage("Checking duplicate...");
-
-                    var hash = ComputeHash(content);
-                    var existing = await _flightStorage.GetFlightByFileHashAsync(hash);
-
-                    if (existing is not null)
-                    {
-                        _toastService.Show($"{file.Name}: Flight already exists.", ToastType.Info);
-                        continue;
-                    }
-
-                    _importState.SetMessage("Importing flight...");
-
-                    var result = ImportInternal(content);
-                    result.Flight.FileHash = hash;
-
-                    _importState.SetMessage("Saving flight...");
-
-                    var trackBinary = _trackBinarySerializer.Serialize(result.Track);
-
-                    await _flightStorage.SaveFlightAggregateAsync(
-                        result.Flight,
-                        trackBinary,
-                        content
-                    );
-
-                    _toastService.Show($"{file.Name}: Flight imported.", ToastType.Success);
-                }
-                catch
-                {
-                    _toastService.Show($"{file.Name}: Import failed.", ToastType.Error);
+                    await ImportSingleFileAsync(file);
                 }
                 finally
                 {
-                    _importState.Advance();
-                    await Task.Yield();
+                    semaphore.Release();
                 }
-            }
+            }).ToList();
+
+            await Task.WhenAll(tasks);
+
+            var summary = _importState.State;
+            _toastService.Show(
+                $"{summary.ProcessedFiles} files processed. Imported: {summary.ImportedCount}, Duplicates: {summary.DuplicateCount}, Failed: {summary.FailedCount}.",
+                ToastType.Info);
         }
         finally
         {
-            _importState.Finish();
+            _importState.Finish("Import finished.");
         }
     }
+
+    private async Task ImportSingleFileAsync(IBrowserFile file)
+    {
+        try
+        {
+            if (!file.Name.EndsWith(".igc", StringComparison.OrdinalIgnoreCase))
+            {
+                _importState.IncrementFailed();
+                return;
+            }
+
+            if (file.Size <= 0)
+            {
+                _importState.IncrementFailed();
+                return;
+            }
+
+            using var stream = file.OpenReadStream(10 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+
+            var content = await reader.ReadToEndAsync();
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                _importState.IncrementFailed();
+                return;
+            }
+
+            var hash = ComputeHash(content);
+
+            var result = ImportInternal(content);
+            result.Flight.FileHash = hash;
+
+            var trackBinary = _trackBinarySerializer.Serialize(result.Track);
+
+            try
+            {
+                await _flightStorage.SaveFlightAggregateAsync(
+                    result.Flight,
+                    trackBinary,
+                    content
+                );
+
+                _importState.IncrementImported();
+            }
+            catch (Exception ex) when (IsDuplicateException(ex))
+            {
+                _importState.IncrementDuplicate();
+            }
+        }
+        catch
+        {
+            _importState.IncrementFailed();
+        }
+        finally
+        {
+            _importState.Advance();
+        }
+    }
+
+    private static bool IsDuplicateException(Exception ex)
+    {
+        return ex.Message.Contains("Constraint", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("exists", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string ComputeHash(string content)
     {
         using var sha = SHA256.Create();

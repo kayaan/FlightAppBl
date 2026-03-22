@@ -30,7 +30,9 @@
         @if (ImportState.State.IsImporting)
         {
             <div class="import-progress">
-                Importing @ImportState.State.ProcessedFiles of @ImportState.State.TotalFiles files
+                <div class="import-progress-title">
+                    Importing @ImportState.State.ProcessedFiles of @ImportState.State.TotalFiles files
+                </div>
 
                 @if (!string.IsNullOrWhiteSpace(ImportState.State.CurrentFileName))
                 {
@@ -39,19 +41,32 @@
                     </div>
                 }
 
+                @if (!string.IsNullOrWhiteSpace(ImportState.State.CurrentMessage))
+                {
+                    <div class="import-progress-message">
+                        @ImportState.State.CurrentMessage
+                    </div>
+                }
+
+                <div class="import-progress-stats">
+                    <span>Imported: @ImportState.State.ImportedCount</span>
+                    <span>Duplicates: @ImportState.State.DuplicateCount</span>
+                    <span>Failed: @ImportState.State.FailedCount</span>
+                </div>
+
                 <div class="progress-bar">
-                    <div class="progress-fill"
-                         style="width:@(ImportState.State.TotalFiles > 0
-                                                                                                                                                                                                                       ? ImportState.State.ProcessedFiles * 100.0 / ImportState.State.TotalFiles
-                                                                                                                                                                                                                       : 0)%">
+                    <div class="progress-fill" style="width:@(ImportState.State.TotalFiles > 0
+                                                                                                                                                                           ? ImportState.State.ProcessedFiles * 100.0 / ImportState.State.TotalFiles
+                                                                                                                                                                           : 0)%">
                     </div>
                 </div>
             </div>
         }
 
-        <button class="import-button" @onclick="OpenImport">
-            Import IGC
+        <button class="import-button"        @onclick="OpenImport"        disabled="@ImportState.State.IsImporting">
+            @(ImportState.State.IsImporting ? "Importing..." : "Import IGC")
         </button>
+
     </div>
 
     <InputFile @ref="fileInput" OnChange="HandleFileSelected" style="display: none;" accept=".igc" multiple />
