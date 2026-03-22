@@ -1,255 +1,256 @@
-    .flights-page {
-        padding: 24px;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
+.flights-page {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
 
-    .flights-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
+.flights-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.page-subtitle {
+    margin: 6px 0 0 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.import-button {
+    border: none;
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.20);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.import-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 36px rgba(37, 99, 235, 0.28);
+}
+
+.table-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.table-scroll {
+    overflow-x: visible;
+    overflow-y: visible;
+}
+
+.flights-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 0;
+}
+
+.flights-table thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 16px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.flights-table thead th.num {
+    text-align: right;
+}
+
+.sortable {
+    cursor: pointer;
+}
+
+.sortable:hover {
+    background: #f1f5f9;
+}
+
+.flights-table tbody td {
+    padding: 16px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    background: white;
+}
+
+.flight-row:hover td {
+    background: #f8fbff;
+}
+
+.flights-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.main-value {
+    font-size: 0.96rem;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+}
+
+.num {
+    text-align: right;
+}
+
+.stack-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.separator {
+    color: #94a3b8;
+}
+
+.value-positive {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.value-negative {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.value-muted {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.empty-state {
+    border: 1px dashed #cbd5e1;
+    border-radius: 20px;
+    padding: 48px 24px;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+}
+
+.empty-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.empty-text {
+    margin-top: 8px;
+    color: #64748b;
+}
+
+@media (max-width: 768px) {
+    .flights-page {
+        padding: 16px;
     }
 
     .page-title {
-        margin: 0;
-        font-size: 2rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-    }
-
-    .page-subtitle {
-        margin: 6px 0 0 0;
-        color: #6b7280;
-        font-size: 0.95rem;
+        font-size: 1.6rem;
     }
 
     .import-button {
-        border: none;
-        border-radius: 14px;
-        padding: 12px 18px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        cursor: pointer;
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        color: white;
-        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.20);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .import-button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 14px 36px rgba(37, 99, 235, 0.28);
-    }
-
-    .table-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-    }
-
-    .table-scroll {
-        overflow-x: auto;
-    }
-
-    .flights-table {
         width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        min-width: 1040px;
     }
+}
 
-    .flights-table thead th {
-        background: #f8fafc;
-        color: #475569;
-        font-size: 0.82rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        padding: 16px 18px;
-        border-bottom: 1px solid #e5e7eb;
-        text-align: left;
-        white-space: nowrap;
-        user-select: none;
-    }
+.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
 
-    .flights-table thead th.num {
-        text-align: right;
-    }
-
-    .sortable {
-        cursor: pointer;
-    }
-
-    .sortable:hover {
-        background: #f1f5f9;
-    }
-
-    .flights-table tbody td {
-        padding: 16px 18px;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        background: white;
-    }
-
-    .flight-row:hover td {
-        background: #f8fbff;
-    }
-
-    .flights-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-    .main-value {
-        font-size: 0.96rem;
-        font-weight: 600;
-        color: #0f172a;
-        white-space: nowrap;
-    }
-
-    .num {
-        text-align: right;
-    }
-
-    .stack-value {
-        display: inline-flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 8px;
-        white-space: nowrap;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .separator {
-        color: #94a3b8;
-    }
-
-    .value-positive {
-        color: #0f172a;
-        font-weight: 700;
-    }
-
-    .value-negative {
-        color: #b91c1c;
-        font-weight: 700;
-    }
-
-    .value-muted {
-        color: #64748b;
-        font-weight: 600;
-    }
-
-    .empty-state {
-        border: 1px dashed #cbd5e1;
-        border-radius: 20px;
-        padding: 48px 24px;
-        background: linear-gradient(180deg, #ffffff, #f8fafc);
-        text-align: center;
-    }
-
-    .empty-icon {
-        font-size: 2rem;
-        margin-bottom: 12px;
-    }
-
-    .empty-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .empty-text {
-        margin-top: 8px;
-        color: #64748b;
-    }
-
-    @media (max-width: 768px) {
-        .flights-page {
-            padding: 16px;
-        }
-
-        .page-title {
-            font-size: 1.6rem;
-        }
-
-        .import-button {
-            width: 100%;
-        }
-    }
-
-    .num {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .col-altitude {
-        min-width: 5.5rem;
-    }
+.col-altitude {
+    min-width: 5.5rem;
+}
 
 
-    .alt-pair {
-        display: inline-grid;
-        grid-template-columns: 4ch 1ch 4ch 2ch;
-        justify-content: end;
-        align-items: baseline;
-        font-variant-numeric: tabular-nums;
-        white-space: nowrap;
-    }
+.alt-pair {
+    display: inline-grid;
+    grid-template-columns: 4ch 1ch 4ch 2ch;
+    justify-content: end;
+    align-items: baseline;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
 
-    .alt-num {
-        text-align: right;
-        color: #0f172a;
-        font-weight: 600;
-    }
+.alt-num {
+    text-align: right;
+    color: #0f172a;
+    font-weight: 600;
+}
 
-    .alt-sep {
-        text-align: center;
-        color: #94a3b8;
-    }
+.alt-sep {
+    text-align: center;
+    color: #94a3b8;
+}
 
-    .alt-unit {
-        text-align: left;
-        padding-left: 0.25rem;
-        color: #64748b;
-    }
+.alt-unit {
+    text-align: left;
+    padding-left: 0.25rem;
+    color: #64748b;
+}
 
-    .climb-pair {
-        display: inline-grid;
-        grid-template-columns: 5ch 1ch 5ch 4ch;
-        justify-content: end;
-        align-items: baseline;
-        font-variant-numeric: tabular-nums;
-        white-space: nowrap;
-    }
+.climb-pair {
+    display: inline-grid;
+    grid-template-columns: 5ch 1ch 5ch 4ch;
+    justify-content: end;
+    align-items: baseline;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
 
-    .climb-num {
-        text-align: right;
-        color: #0f172a;
-        font-weight: 600;
-    }
+.climb-num {
+    text-align: right;
+    color: #0f172a;
+    font-weight: 600;
+}
 
-    .climb-sep {
-        text-align: center;
-    }
+.climb-sep {
+    text-align: center;
+}
 
-    .climb-unit {
-        padding-left: 0.25rem;
-    }
+.climb-unit {
+    padding-left: 0.25rem;
+}
 
 
-    .flight-row {
-        cursor: pointer;
-    }
+.flight-row {
+    cursor: pointer;
+}
 
-    .flight-row:hover td {
-        background: #f8fbff;
-    }
+.flight-row:hover td {
+    background: #f8fbff;
+}
 
-    .actions {
+.actions {
     width: 1%;
     white-space: nowrap;
     text-align: right;
@@ -310,4 +311,25 @@
     background: rgba(239, 68, 68, 0.14);
     border-color: rgba(239, 68, 68, 0.45);
     color: #fecaca;
+}
+
+
+.import-progress {
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+.progress-bar {
+    margin-top: 6px;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #1d4ed8);
+    transition: width 0.2s ease;
 }

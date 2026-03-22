@@ -3,53 +3,129 @@ using System.Security.Cryptography;
 using System.Text;
 using FlightApp.Analysis;
 using FlightApp.Domain;
+using Microsoft.AspNetCore.Components.Forms;
+
 
 namespace FlightApp.Services;
 
 public class FlightImportService
 {
     private readonly IgcParser _parser;
+
     private readonly FlightStatsCalculator _statsCalculator;
+
     private readonly TrackBinarySerializer _trackBinarySerializer;
+
     private readonly IFlightStorage _flightStorage;
+
+    private ToastService _toastService;
+
+    private FlightImportStateService _importState;
+
+    public string? CurrentFileName { get; private set; }
 
     public FlightImportService(
         IgcParser parser,
         FlightStatsCalculator statsCalculator,
         TrackBinarySerializer trackBinarySerializer,
-        IFlightStorage flightStorage)
+        IFlightStorage flightStorage,
+        ToastService toastService,
+        FlightImportStateService importState)
     {
         _parser = parser;
         _statsCalculator = statsCalculator;
         _trackBinarySerializer = trackBinarySerializer;
         _flightStorage = flightStorage;
+        _toastService = toastService;
+        _importState = importState;
     }
 
-    public async Task<Flight> ImportAndSaveAsync(string igcContent)
+    public async Task ImportAndSaveAsync(IReadOnlyList<IBrowserFile>? files)
     {
-        var hash = ComputeHash(igcContent);
-
-        var existing = await _flightStorage.GetFlightByFileHashAsync(hash);
-        if (existing != null)
+        if (files == null || files.Count == 0)
         {
-            return existing;
+            _toastService.Show("No file selected.", ToastType.Info);
+            return;
         }
 
-        var result = ImportInternal(igcContent);
+        _importState.Start(files.Count);
 
-        result.Flight.FileHash = hash;
+        try
+        {
+            foreach (var file in files)
+            {
+                _importState.SetCurrentFile(file.Name, "Reading file...");
+                await Task.Yield();
 
-        var trackBinary = _trackBinarySerializer.Serialize(result.Track);
+                try
+                {
+                    if (!file.Name.EndsWith(".igc", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _toastService.Show($"{file.Name}: Only .igc files are allowed.", ToastType.Error);
+                        continue;
+                    }
 
-        await _flightStorage.SaveFlightAggregateAsync(
-            result.Flight,
-            trackBinary,
-            igcContent
-        );
+                    if (file.Size <= 0)
+                    {
+                        _toastService.Show($"{file.Name}: File is empty.", ToastType.Error);
+                        continue;
+                    }
 
-        return result.Flight;
+                    using var stream = file.OpenReadStream(10 * 1024 * 1024);
+                    using var reader = new StreamReader(stream);
+
+                    var content = await reader.ReadToEndAsync();
+
+                    if (string.IsNullOrWhiteSpace(content))
+                    {
+                        _toastService.Show($"{file.Name}: File is empty.", ToastType.Error);
+                        continue;
+                    }
+
+                    _importState.SetMessage("Checking duplicate...");
+
+                    var hash = ComputeHash(content);
+                    var existing = await _flightStorage.GetFlightByFileHashAsync(hash);
+
+                    if (existing is not null)
+                    {
+                        _toastService.Show($"{file.Name}: Flight already exists.", ToastType.Info);
+                        continue;
+                    }
+
+                    _importState.SetMessage("Importing flight...");
+
+                    var result = ImportInternal(content);
+                    result.Flight.FileHash = hash;
+
+                    _importState.SetMessage("Saving flight...");
+
+                    var trackBinary = _trackBinarySerializer.Serialize(result.Track);
+
+                    await _flightStorage.SaveFlightAggregateAsync(
+                        result.Flight,
+                        trackBinary,
+                        content
+                    );
+
+                    _toastService.Show($"{file.Name}: Flight imported.", ToastType.Success);
+                }
+                catch
+                {
+                    _toastService.Show($"{file.Name}: Import failed.", ToastType.Error);
+                }
+                finally
+                {
+                    _importState.Advance();
+                    await Task.Yield();
+                }
+            }
+        }
+        finally
+        {
+            _importState.Finish();
+        }
     }
-
     private static string ComputeHash(string content)
     {
         using var sha = SHA256.Create();

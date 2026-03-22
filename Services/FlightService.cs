@@ -1,4 +1,5 @@
 using FlightApp.Domain;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace FlightApp.Services;
 
@@ -18,12 +19,9 @@ public class FlightService
         _trackBinarySerializer = trackBinarySerializer;
     }
 
-    public async Task ImportFilesAsync(IEnumerable<string> igcContents)
+    public async Task ImportAndSaveAsync(IReadOnlyList<IBrowserFile>? files)
     {
-        foreach (var content in igcContents)
-        {
-            await _flightImportService.ImportAndSaveAsync(content);
-        }
+        await _flightImportService.ImportAndSaveAsync(files);
     }
 
     public async Task DeleteFlightAsync(string id)
