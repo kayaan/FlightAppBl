@@ -2,11 +2,14 @@
 
 @using FlightApp.Analysis
 @using FlightApp.Domain
+@using FlightApp.Services
 @using Microsoft.JSInterop
 
 @implements IAsyncDisposable
+@implements IDisposable
 
 @inject IJSRuntime JS
+@inject FlightDetailsStateService State
 
 <div class="flight-charts-root">
     @if (!HasTrack)
@@ -24,13 +27,6 @@
 </div>
 
 @code {
-
-    [Parameter] public TrackArrays? Track { get; set; }
-    [Parameter] public ClimbSegment? SelectedClimb { get; set; }
-    [Parameter] public IReadOnlyList<ClimbSegment>? ClimbSegments { get; set; }
-    [Parameter] public bool ShowAllClimbs { get; set; }
-    [Parameter] public ClimbSegment? HoveredClimb { get; set; }
-
     private string? lastHoveredClimbSignature;
 
     private readonly string altChartId = $"chart-alt-{Guid.NewGuid():N}";
@@ -43,7 +39,17 @@
     private string? lastClimbSignature;
     private string? lastAllClimbsSignature;
 
-    private bool HasTrack => Track?.TDeltaMs is { Length: > 1 };
+    private bool HasTrack => State.TrackArrays?.TDeltaMs is { Length: > 1 };
+
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -139,33 +145,33 @@
 
     private string BuildHoveredClimbSignature()
     {
-        if (!ShowAllClimbs)
+        if (!State.ShowAllClimbs)
             return "off";
 
-        var begin = HoveredClimb?.BeginIndex ?? -1;
-        var end = HoveredClimb?.EndIndex ?? -1;
+        var begin = State.HoveredClimb?.BeginIndex ?? -1;
+        var end = State.HoveredClimb?.EndIndex ?? -1;
 
         return $"{begin}:{end}";
     }
 
     private HoveredClimbPayload BuildHoveredClimbPayload()
     {
-        if (!ShowAllClimbs ||
-            Track?.TimeSec is not { Length: > 0 } timeSec ||
-            HoveredClimb is null ||
-            ClimbSegments is null)
+        if (!State.ShowAllClimbs ||
+            State.TrackArrays?.TimeSec is not { Length: > 0 } timeSec ||
+            State.HoveredClimb is null ||
+            State.ClimbSegments is null)
         {
             return new HoveredClimbPayload();
         }
 
         var hoveredIndex = -1;
 
-        for (int i = 0; i < ClimbSegments.Count; i++)
+        for (int i = 0; i < State.ClimbSegments.Count; i++)
         {
-            var climb = ClimbSegments[i];
+            var climb = State.ClimbSegments[i];
 
-            if (climb.BeginIndex == HoveredClimb.BeginIndex &&
-                climb.EndIndex == HoveredClimb.EndIndex)
+            if (climb.BeginIndex == State.HoveredClimb.BeginIndex &&
+                climb.EndIndex == State.HoveredClimb.EndIndex)
             {
                 hoveredIndex = i;
                 break;
@@ -174,59 +180,45 @@
 
         return new HoveredClimbPayload
         {
-            HoveredClimbBeginSec = timeSec[HoveredClimb.BeginIndex],
-            HoveredClimbEndSec = timeSec[HoveredClimb.EndIndex],
+            HoveredClimbBeginSec = timeSec[State.HoveredClimb.BeginIndex],
+            HoveredClimbEndSec = timeSec[State.HoveredClimb.EndIndex],
             HoveredClimbIndex = hoveredIndex >= 0 ? hoveredIndex : null
         };
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        if (disposed)
-            return;
-
-        disposed = true;
-
-        try
-        {
-            await JS.InvokeVoidAsync("flightCharts.dispose", altChartId);
-            await JS.InvokeVoidAsync("flightCharts.dispose", varioChartId);
-            await JS.InvokeVoidAsync("flightCharts.dispose", speedChartId);
-        }
-        catch { }
-    }
-
     private string BuildDataSignature()
     {
-        var t = Track!.TDeltaMs;
+        var t = State.TrackArrays!.TDeltaMs;
         var count = t.Length;
 
         var alt = SelectAltitudeSource();
-        var speed = Track.SpeedCms;
-        var vario = Track.VarioCms;
+        var speed = State.TrackArrays.SpeedCms;
+        var vario = State.TrackArrays.VarioCms;
 
         return $"{count}:{alt?.Length ?? 0}:{speed?.Length ?? 0}:{vario?.Length ?? 0}:{t[0]}:{t[count - 1]}";
     }
 
     private string BuildClimbSignature()
     {
-        var begin = SelectedClimb?.BeginIndex ?? -1;
-        var end = SelectedClimb?.EndIndex ?? -1;
+        var begin = State.SelectedClimb?.BeginIndex ?? -1;
+        var end = State.SelectedClimb?.EndIndex ?? -1;
 
         return $"{begin}:{end}";
     }
 
     private string BuildAllClimbsSignature()
     {
-        if (!ShowAllClimbs || ClimbSegments == null)
-            return "off";
+        var showAll = State.ShowAllClimbs;
+        var count = State.ClimbSegments?.Count ?? 0;
+        var selected = State.SelectedClimbIndex ?? -1;
+        var hovered = State.HoveredClimbIndex ?? -1;
 
-        return $"on:{ClimbSegments.Count}";
+        return $"{showAll}:{count}:{selected}:{hovered}";
     }
 
     private FlightChartsPayload? BuildBasePayload()
     {
-        if (Track?.TDeltaMs is not { Length: > 1 } tDeltaMs)
+        if (State.TrackArrays?.TDeltaMs is not { Length: > 1 } tDeltaMs)
             return null;
 
         return new FlightChartsPayload
@@ -239,11 +231,11 @@
 
             VarioTitle = "Vario",
             VarioUnit = "m/s",
-            VarioValues = BuildScaledSeries(Track.VarioCms, 0.01),
+            VarioValues = BuildScaledSeries(State.TrackArrays.VarioCms, 0.01),
 
             SpeedTitle = "Speed",
             SpeedUnit = "km/h",
-            SpeedValues = BuildScaledSeries(Track.SpeedCms, 0.036)
+            SpeedValues = BuildScaledSeries(State.TrackArrays.SpeedCms, 0.036)
         };
     }
 
@@ -251,21 +243,21 @@
     {
         return new SelectedClimbPayload
         {
-            SelectedClimbBeginIndex = SelectedClimb?.BeginIndex,
-            SelectedClimbEndIndex = SelectedClimb?.EndIndex
+            SelectedClimbBeginIndex = State.SelectedClimb?.BeginIndex,
+            SelectedClimbEndIndex = State.SelectedClimb?.EndIndex
         };
     }
 
     private AllClimbsPayload BuildAllClimbsPayload()
     {
-        if (!ShowAllClimbs || ClimbSegments == null)
+        if (!State.ShowAllClimbs || State.ClimbSegments == null)
             return new AllClimbsPayload { ShowAllClimbs = false };
 
         return new AllClimbsPayload
         {
             ShowAllClimbs = true,
-            Begin = ClimbSegments.Select(c => c.BeginIndex).ToList(),
-            End = ClimbSegments.Select(c => c.EndIndex).ToList()
+            Begin = State.ClimbSegments.Select(c => c.BeginIndex).ToList(),
+            End = State.ClimbSegments.Select(c => c.EndIndex).ToList()
         };
     }
 
@@ -298,12 +290,37 @@
 
     private int[]? SelectAltitudeSource()
     {
-        if (Track?.AltBaroCm is { Length: > 0 })
-            return Track.AltBaroCm;
+        if (State.TrackArrays?.AltBaroCm is { Length: > 0 })
+            return State.TrackArrays.AltBaroCm;
 
-        if (Track?.AltGpsCm is { Length: > 0 })
-            return Track.AltGpsCm;
+        if (State.TrackArrays?.AltGpsCm is { Length: > 0 })
+            return State.TrackArrays.AltGpsCm;
 
         return null;
+    }
+
+    public void Dispose()
+    {
+        State.Changed -= OnStateChanged;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+            return;
+
+        disposed = true;
+
+        State.Changed -= OnStateChanged;
+
+        try
+        {
+            await JS.InvokeVoidAsync("flightCharts.dispose", altChartId);
+            await JS.InvokeVoidAsync("flightCharts.dispose", varioChartId);
+            await JS.InvokeVoidAsync("flightCharts.dispose", speedChartId);
+        }
+        catch
+        {
+        }
     }
 }

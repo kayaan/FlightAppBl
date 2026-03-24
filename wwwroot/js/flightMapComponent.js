@@ -320,49 +320,49 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         return latLngs;
     }
 
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
-
-function lerp(a, b, t) {
-    return a + (b - a) * t;
-}
-
-function rgbToHex(r, g, b) {
-    const toHex = (x) => Math.round(x).toString(16).padStart(2, "0");
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-function interpolateColor(colorA, colorB, t) {
-    return rgbToHex(
-        lerp(colorA[0], colorB[0], t),
-        lerp(colorA[1], colorB[1], t),
-        lerp(colorA[2], colorB[2], t)
-    );
-}
-
-function getTrackColorByVario(varioCms) {
-    const v = varioCms * 0.01;
-
-    const maxAbsVario = 3.5;
-
-    const tRaw = clamp(Math.abs(v) / maxAbsVario, 0, 1);
-    const t = Math.pow(tRaw, 0.35); // 🔥 sehr aggressiv
-
-    const neutral = [180, 180, 180];
-    const darkRed = [140, 0, 0];
-    const darkBlue = [0, 30, 180];
-
-    if (v > 0) {
-        return interpolateColor(neutral, darkRed, t);
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
     }
 
-    if (v < 0) {
-        return interpolateColor(neutral, darkBlue, t);
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
     }
 
-    return rgbToHex(neutral[0], neutral[1], neutral[2]);
-}
+    function rgbToHex(r, g, b) {
+        const toHex = (x) => Math.round(x).toString(16).padStart(2, "0");
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    function interpolateColor(colorA, colorB, t) {
+        return rgbToHex(
+            lerp(colorA[0], colorB[0], t),
+            lerp(colorA[1], colorB[1], t),
+            lerp(colorA[2], colorB[2], t)
+        );
+    }
+
+    function getTrackColorByVario(varioCms) {
+        const v = varioCms * 0.01;
+
+        const maxAbsVario = 3.5;
+
+        const tRaw = clamp(Math.abs(v) / maxAbsVario, 0, 1);
+        const t = Math.pow(tRaw, 0.35); // 🔥 sehr aggressiv
+
+        const neutral = [180, 180, 180];
+        const darkRed = [140, 0, 0];
+        const darkBlue = [0, 30, 180];
+
+        if (v > 0) {
+            return interpolateColor(neutral, darkRed, t);
+        }
+
+        if (v < 0) {
+            return interpolateColor(neutral, darkBlue, t);
+        }
+
+        return rgbToHex(neutral[0], neutral[1], neutral[2]);
+    }
     function buildColoredTrackSegments(latE7, lonE7, varioCms) {
         if (!latE7 || !lonE7 || !varioCms) return [];
 
@@ -680,6 +680,54 @@ function getTrackColorByVario(varioCms) {
 
         instance.map.remove();
         delete instances[elementId];
+    }
+
+    function registerInteraction(elementId, dotNetRef) {
+        const instance = instances[elementId];
+        if (!instance) return;
+
+        instance.dotNetRef = dotNetRef;
+
+        instance.map.on("mousemove", (e) => {
+            const index = findNearestTrackIndex(instance, e.latlng);
+            if (index != null) {
+                dotNetRef.invokeMethodAsync("OnMapTrackHover", index);
+            }
+        });
+
+        instance.map.on("mouseout", () => {
+            dotNetRef.invokeMethodAsync("OnMapTrackLeave");
+        });
+
+        instance.map.on("click", () => {
+            dotNetRef.invokeMethodAsync("OnMapTrackClick");
+        });
+    }
+
+    function findNearestTrackIndex(instance, latlng) {
+        const latE7 = instance.latE7;
+        const lonE7 = instance.lonE7;
+
+        if (!latE7 || !lonE7) return null;
+
+        let bestIndex = null;
+        let bestDist = Infinity;
+
+        const lat = latlng.lat;
+        const lon = latlng.lng;
+
+        for (let i = 0; i < latE7.length; i += 5) { // step für Performance
+            const dLat = lat - latE7[i] / 1e7;
+            const dLon = lon - lonE7[i] / 1e7;
+            const dist = dLat * dLat + dLon * dLon;
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
     }
 
     return {

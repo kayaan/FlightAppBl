@@ -12,34 +12,33 @@
 
 @implements IAsyncDisposable
 
-@inject FlightService FlightService
 @inject FlightDetailsLoadService FlightDetailsLoadService
 @inject FlightDetailsSelectionService SelectionService
-
+@inject FlightDetailsStateService State
 @inject IJSRuntime JS
 
 <div class="flight-details-page">
-    @if (state.IsLoading)
+    @if (State.IsLoading)
     {
         <div class="state-card">
             <div class="state-title">Loading flight…</div>
         </div>
     }
-    else if (!string.IsNullOrWhiteSpace(state.ErrorMessage))
+    else if (!string.IsNullOrWhiteSpace(State.ErrorMessage))
     {
         <div class="state-card state-error">
             <div class="state-title">Could not load flight</div>
-            <div class="state-text">@state.ErrorMessage</div>
+            <div class="state-text">@State.ErrorMessage</div>
         </div>
     }
-    else if (state.Flight is null)
+    else if (State.Flight is null)
     {
         <div class="state-card">
             <div class="state-title">Flight not found</div>
             <div class="state-text">No flight exists for the requested id.</div>
         </div>
     }
-    else if (state.DisplayedStats is null)
+    else if (State.DisplayedStats is null)
     {
         <div class="state-card">
             <div class="state-title">Flight data incomplete</div>
@@ -49,27 +48,27 @@
     else
     {
         <div class="flight-header">
-            @if (state.ShowAllClimbs)
+            @if (State.ShowAllClimbs)
             {
-                <AllClimbsKpis Items="state.AllClimbKpis"                               OnClimbClick="SelectClimb"                               OnClimbHover="SetHoveredClimb"
+                <AllClimbsKpis Items="State.AllClimbKpis"                               OnClimbClick="SelectClimb"                               OnClimbHover="SetHoveredClimb"
                                OnClimbLeave="ClearHoveredClimb" />
             }
             else if (SelectedClimb is not null)
             {
-                <SelectedClimbKpis Stats="state.DisplayedStats"                                   SelectedClimb="SelectedClimb"                                   TrackArrays="state.TrackArrays" />
+                <SelectedClimbKpis Stats="State.DisplayedStats"                                   SelectedClimb="SelectedClimb"                                   TrackArrays="State.TrackArrays" />
             }
             else
             {
-                <FlightStatsKpis Stats="state.DisplayedStats" />
+                <FlightStatsKpis Stats="State.DisplayedStats" />
             }
         </div>
 
-        @if (state.ClimbSegments.Count > 0)
+        @if (State.ClimbSegments.Count > 0)
         {
             <div class="climb-nav-row">
                 <div class="climb-nav-shell">
 
-                    <button type="button" class="climb-btn" title="Previous climb" @onclick="SelectPreviousClimb"
+                    <button type="button"                            class="climb-btn"                            title="Previous climb"                            @onclick="SelectPreviousClimb"
                             disabled="@(!CanSelectPreviousClimb)">
                         ◀
                     </button>
@@ -79,18 +78,18 @@
                         <div class="climb-sub">@GetClimbNavigatorSubtitle()</div>
                     </div>
 
-                    <button type="button" class="climb-btn climb-btn-primary" title="Next climb" @onclick="SelectNextClimb"
+                    <button type="button"                            class="climb-btn climb-btn-primary"                            title="Next climb"                            @onclick="SelectNextClimb"
                             disabled="@(!CanSelectNextClimb)">
                         ▶
                     </button>
 
-                    <button type="button" class="climb-btn-clear" title="Clear selection" @onclick="ClearSelection"
+                    <button type="button"                            class="climb-btn-clear"                            title="Clear selection"                            @onclick="ClearSelection"
                             disabled="@(!CanClear)">
                         ✕
                     </button>
 
-                    <button type="button" class="climb-btn-toggle @(state.ShowAllClimbs ? "climb-btn-toggle-active" : null)"
-                            title="Show all climbs" @onclick="ToggleShowAllClimbs">
+                    <button type="button"                            class="climb-btn-toggle @(State.ShowAllClimbs ? "climb-btn-toggle-active" : null)"
+                            title="Show all climbs"                            @onclick="ToggleShowAllClimbs">
                         All
                     </button>
 
@@ -98,37 +97,33 @@
             </div>
         }
 
-        <div class="flight-layout" @ref="state.FlightLayoutRef">
+        <div class="flight-layout" @ref="State.FlightLayoutRef">
             <div class="left-pane" style="@GetLeftPaneStyle()">
-                <FlightCharts Track="state.TrackArrays" SelectedClimb="SelectedClimb" HoveredClimb="HoveredClimb"
-                              ClimbSegments="state.ClimbSegments" ShowAllClimbs="state.ShowAllClimbs" />
+                <FlightCharts />
             </div>
 
-            <div class="splitter @(state.IsResizing ? "splitter-active" : null)" @onmousedown="StartResize"
-                 @onmousedown:preventDefault="true" aria-label="Resize panels" role="separator">
+            <div class="splitter @(State.IsResizing ? "splitter-active" : null)"                 @onmousedown="StartResize"
+                 @onmousedown:preventDefault="true"                 aria-label="Resize panels"                 role="separator">
             </div>
 
             <div class="right-pane">
-
                 <div class="map-style-toggle">
-                    <button class="map-toggle-btn @(state.MapStyle == MapStyle.Road ? "active" : null)"
-                            @onclick="@(() => state.MapStyle = MapStyle.Road)">
+                    <button class="map-toggle-btn @(State.MapStyle == MapStyle.Road ? "active" : null)"
+                            @onclick="@(() => State.SetMapStyle(MapStyle.Road))">
                         Road
                     </button>
 
-                    <button class="map-toggle-btn @(state.MapStyle == MapStyle.Topo ? "active" : null)"
-                            @onclick="@(() => state.MapStyle = MapStyle.Topo)">
+                    <button class="map-toggle-btn @(State.MapStyle == MapStyle.Topo ? "active" : null)"
+                            @onclick="@(() => State.SetMapStyle(MapStyle.Topo))">
                         Topo
                     </button>
                 </div>
 
-                <FlightMap Track="state.TrackArrays" Height="100%" MapStyle="state.MapStyle" HoveredClimb="HoveredClimb"
-                           SelectedClimb="SelectedClimb" ClimbSegments="state.ClimbSegments" />
-
+                <FlightMap Track="State.TrackArrays"                           Height="100%"                           MapStyle="State.MapStyle" />
             </div>
         </div>
 
-        @if (state.IsResizing)
+        @if (State.IsResizing)
         {
             <div class="resize-overlay"></div>
         }
@@ -139,41 +134,24 @@
     [Parameter]
     public string? Id { get; set; }
 
-    private int? hoveredClimbIndex;
-    private ClimbSegment? HoveredClimb
-        => hoveredClimbIndex.HasValue &&
-           hoveredClimbIndex.Value >= 0 &&
-           hoveredClimbIndex.Value < state.ClimbSegments.Count
-            ? state.ClimbSegments[hoveredClimbIndex.Value]
-            : null;
-
-    private void SetHoveredClimb(int index)
-    {
-        hoveredClimbIndex = index;
-    }
-
-    private void ClearHoveredClimb()
-    {
-        hoveredClimbIndex = null;
-    }
-
-    private readonly FlightDetailsState state = new();
-
     private DotNetObjectReference<FlightDetails>? dotNetRef;
 
-    private ClimbSegment? SelectedClimb
-        => state.SelectedClimbIndex.HasValue &&
-           state.SelectedClimbIndex.Value >= 0 &&
-           state.SelectedClimbIndex.Value < state.ClimbSegments.Count
-            ? state.ClimbSegments[state.SelectedClimbIndex.Value]
-            : null;
+    private ClimbSegment? HoveredClimb => State.HoveredClimb;
+    private ClimbSegment? SelectedClimb => State.SelectedClimb;
 
-    private bool CanSelectPreviousClimb
-        => state.SelectedClimbIndex.HasValue && state.SelectedClimbIndex.Value > 0;
+    private bool CanSelectPreviousClimb => State.CanSelectPreviousClimb;
+    private bool CanSelectNextClimb => State.CanSelectNextClimb;
+    private bool CanClear => State.CanClear;
 
-    private bool CanSelectNextClimb
-        => state.ClimbSegments.Count > 0 &&
-           (!state.SelectedClimbIndex.HasValue || state.SelectedClimbIndex.Value < state.ClimbSegments.Count - 1);
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -181,14 +159,13 @@
             return;
 
         dotNetRef ??= DotNetObjectReference.Create(this);
-
         await JS.InvokeVoidAsync("flightCharts.registerSelectionCallback", dotNetRef);
     }
 
     [JSInvokable]
     public Task OnChartSelection(int startIndex, int endIndex)
     {
-        state.SelectedClimbIndex = null;
+        State.ClearSelectedClimb();
         ApplySelection(startIndex, endIndex);
         return Task.CompletedTask;
     }
@@ -202,166 +179,180 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        state.IsLoading = true;
-        state.ErrorMessage = null;
-        state.Flight = null;
-        state.TrackArrays = null;
-        state.DisplayedStats = null;
-        state.CurrentSelection = null;
-        state.ClimbSegments = new List<ClimbSegment>();
-        state.SelectedClimbIndex = null;
-        state.ShowAllClimbs = false;
-        state.AllClimbKpis = new List<ClimbSummaryKpi>();
-        state.ClimbSummary = null;
+        State.ResetForLoad();
 
         try
         {
             if (string.IsNullOrWhiteSpace(Id))
             {
-                state.ErrorMessage = "Missing flight id.";
+                State.SetError("Missing flight id.");
                 return;
             }
 
             var result = await FlightDetailsLoadService.LoadAsync(Id);
 
-            state.Flight = result.Flight;
-            state.TrackArrays = result.TrackArrays;
-            state.DisplayedStats = result.DisplayedStats;
-            state.ClimbSegments = result.ClimbSegments;
-            state.ClimbSummary = result.ClimbSummary;
-            state.AllClimbKpis = result.AllClimbKpis;
+            State.SetLoadResult(
+                result.Flight,
+                result.TrackArrays,
+                result.DisplayedStats,
+                result.ClimbSegments,
+                result.ClimbSummary,
+                result.AllClimbKpis);
         }
         catch (Exception ex)
         {
-            state.ErrorMessage = ex.Message;
+            State.SetError(ex.Message);
         }
         finally
         {
-            state.IsLoading = false;
+            State.SetLoadingFinished();
         }
     }
 
-    private void ApplySelectionResult(FlightDetailsSelectionResult result)
+    private void SetHoveredClimb(int index)
     {
-        if (result.DisplayedStats is not null)
-            state.DisplayedStats = result.DisplayedStats;
+        State.SetHoveredClimb(index);
+    }
 
-        state.SelectedClimbIndex = result.SelectedClimbIndex;
-        state.CurrentSelection = result.CurrentSelection;
-        state.ShowAllClimbs = result.ShowAllClimbs;
-
-        StateHasChanged();
+    private void ClearHoveredClimb()
+    {
+        State.ClearHoveredClimb();
     }
 
     private void ApplySelection(int startIndex, int endIndex)
     {
-        if (state.TrackArrays is null)
+        if (State.TrackArrays is null)
             return;
 
         var result = SelectionService.ApplySelection(
-            state.TrackArrays,
+            State.TrackArrays,
             startIndex,
             endIndex);
 
-        ApplySelectionResult(result);
+        State.ApplySelectionResult(result);
     }
 
     private void ClearSelection()
     {
-        var result = SelectionService.ClearSelection(state.Flight);
-        ApplySelectionResult(result);
+        var result = SelectionService.ClearSelection(State.Flight);
+        State.ApplySelectionResult(result);
     }
 
     private void SelectPreviousClimb()
     {
-        if (state.TrackArrays is null)
+        if (State.TrackArrays is null)
             return;
 
         var result = SelectionService.SelectPreviousClimb(
-            state.TrackArrays,
-            state.ClimbSegments,
-            state.SelectedClimbIndex);
+            State.TrackArrays,
+            State.ClimbSegments,
+            State.SelectedClimbIndex);
 
-        ApplySelectionResult(result);
+        State.ApplySelectionResult(result);
     }
 
     private void SelectNextClimb()
     {
-        if (state.TrackArrays is null)
+        if (State.TrackArrays is null)
             return;
 
         var result = SelectionService.SelectNextClimb(
-            state.TrackArrays,
-            state.ClimbSegments,
-            state.SelectedClimbIndex);
+            State.TrackArrays,
+            State.ClimbSegments,
+            State.SelectedClimbIndex);
 
-        ApplySelectionResult(result);
+        State.ApplySelectionResult(result);
     }
 
     private void SelectClimb(int index)
     {
-        if (state.TrackArrays is null)
+        if (State.TrackArrays is null)
             return;
 
-        hoveredClimbIndex = null;
+        State.ClearHoverOnSelection();
 
         var result = SelectionService.SelectClimb(
-            state.TrackArrays,
-            state.ClimbSegments,
+            State.TrackArrays,
+            State.ClimbSegments,
             index);
 
-        ApplySelectionResult(result);
+        State.ApplySelectionResult(result);
     }
 
     private string GetLeftPaneStyle()
-        => $"flex: 0 0 {state.LeftPanePercent}%";
+        => $"flex: 0 0 {State.LeftPanePercent}%";
 
     private async Task StartResize(MouseEventArgs _)
     {
         dotNetRef ??= DotNetObjectReference.Create(this);
-        state.IsResizing = true;
-        await InvokeAsync(StateHasChanged);
+        State.SetIsResizing(true);
 
-        await JS.InvokeVoidAsync("flightDetails.startResize", state.FlightLayoutRef, dotNetRef);
+        await JS.InvokeVoidAsync("flightDetails.startResize", State.FlightLayoutRef, dotNetRef);
     }
 
     [JSInvokable]
     public Task SetResizeBounds(double left, double width)
     {
-        state.LayoutLeft = left;
-        state.LayoutWidth = width;
+        State.LayoutLeft = left;
+        State.LayoutWidth = width;
         return Task.CompletedTask;
     }
 
     [JSInvokable]
     public async Task OnResizeDrag(double clientX)
     {
-        if (state.LayoutWidth <= 0)
+        if (State.LayoutWidth <= 0)
             return;
 
-        var relativeX = clientX - state.LayoutLeft;
-        var newPercent = (int)Math.Round(relativeX / state.LayoutWidth * 100.0);
-
+        var relativeX = clientX - State.LayoutLeft;
+        var newPercent = (int)Math.Round(relativeX / State.LayoutWidth * 100.0);
         var clamped = Math.Clamp(newPercent, 30, 75);
-        if (clamped == state.LeftPanePercent)
+
+        if (!State.SetLeftPanePercent(clamped))
             return;
 
-        state.LeftPanePercent = clamped;
-
-        await InvokeAsync(StateHasChanged);
         await JS.InvokeVoidAsync("flightDetails.notifyResize");
     }
 
     [JSInvokable]
     public async Task OnResizeEnd()
     {
-        state.IsResizing = false;
-        await InvokeAsync(StateHasChanged);
+        State.SetIsResizing(false);
         await JS.InvokeVoidAsync("flightDetails.notifyResize");
+    }
+
+    private string GetClimbNavigatorTitle()
+    {
+        if (State.ClimbSegments.Count == 0)
+            return "No climbs";
+
+        if (!State.SelectedClimbIndex.HasValue)
+            return $"Climb — / {State.ClimbSegments.Count}";
+
+        return $"Climb {State.SelectedClimbIndex.Value + 1} / {State.ClimbSegments.Count}";
+    }
+
+    private string GetClimbNavigatorSubtitle()
+    {
+        if (State.ClimbSegments.Count == 0)
+            return string.Empty;
+
+        var climb = SelectedClimb;
+        if (climb is null)
+            return $"{State.ClimbSegments.Count} climbs detected";
+
+        return $"{FlightDetailsFormatters.FormatGain(climb)} · {climb.AvgClimbRateMs:0.0} m/s";
+    }
+
+    private void ToggleShowAllClimbs()
+    {
+        State.ToggleShowAllClimbs();
     }
 
     public async ValueTask DisposeAsync()
     {
+        State.Changed -= OnStateChanged;
+
         try
         {
             await JS.InvokeVoidAsync("flightCharts.clearSelectionCallback");
@@ -371,44 +362,5 @@
         }
 
         dotNetRef?.Dispose();
-    }
-
-    private string GetClimbNavigatorTitle()
-    {
-        if (state.ClimbSegments.Count == 0)
-            return "No climbs";
-
-        if (!state.SelectedClimbIndex.HasValue)
-            return $"Climb — / {state.ClimbSegments.Count}";
-
-        return $"Climb {state.SelectedClimbIndex.Value + 1} / {state.ClimbSegments.Count}";
-    }
-
-    private string GetClimbNavigatorSubtitle()
-    {
-        if (state.ClimbSegments.Count == 0)
-            return string.Empty;
-
-        var climb = SelectedClimb;
-        if (climb is null)
-            return $"{state.ClimbSegments.Count} climbs detected";
-
-        return $"{FlightDetailsFormatters.FormatGain(climb)} · {climb.AvgClimbRateMs:0.0} m/s";
-    }
-
-    private bool CanClear
-        => state.CurrentSelection is not null || state.SelectedClimbIndex is not null || state.ShowAllClimbs;
-
-    private void ToggleShowAllClimbs()
-    {
-        var newValue = !state.ShowAllClimbs;
-
-        if (newValue)
-        {
-            state.SelectedClimbIndex = null;
-            hoveredClimbIndex = null;
-        }
-
-        state.ShowAllClimbs = newValue;
     }
 }
