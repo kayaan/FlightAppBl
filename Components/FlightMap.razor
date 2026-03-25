@@ -31,10 +31,6 @@
     [Parameter]
     public string Height { get; set; } = "100%";
 
-    [Parameter]
-    public MapStyle MapStyle { get; set; } = MapStyle.Road;
-
-
     private DotNetObjectReference<FlightMap>? dotNetRef;
 
 
@@ -78,7 +74,7 @@
                 State.TrackArrays!.LatE7,
                 State.TrackArrays.LonE7,
                 State.TrackArrays.VarioCms,
-                MapStyle.ToString().ToLowerInvariant());
+                State.MapStyle.ToString().ToLowerInvariant());
 
             lastRenderSignature = signature;
             lastHoveredClimbSignature = null;
@@ -197,9 +193,9 @@
         var count = Math.Min(latE7.Length, lonE7.Length);
 
         if (count == 0)
-            return $"0:{MapStyle}";
+            return $"0:{State.MapStyle}";
 
-        return $"{MapStyle}:{count}:{latE7[0]}:{lonE7[0]}:{latE7[count - 1]}:{lonE7[count - 1]}";
+        return $"{State.MapStyle}:{count}:{latE7[0]}:{lonE7[0]}:{latE7[count - 1]}:{lonE7[count - 1]}";
     }
 
     [JSInvokable]
