@@ -29,9 +29,6 @@
 
 @code {
     [Parameter]
-    public TrackArrays? Track { get; set; }
-
-    [Parameter]
     public string Height { get; set; } = "100%";
 
     [Parameter]
@@ -49,8 +46,8 @@
     private bool disposed;
 
     private bool HasTrackPoints =>
-        Track?.LatE7 is { Length: > 0 } &&
-        Track.LonE7 is { Length: > 0 };
+        State.TrackArrays?.LatE7 is { Length: > 0 } &&
+        State.TrackArrays.LonE7 is { Length: > 0 };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -78,9 +75,9 @@
             await JS.InvokeVoidAsync(
                 "flightMapComponent.renderTrackArrays",
                 mapId,
-                Track!.LatE7,
-                Track.LonE7,
-                Track.VarioCms,
+                State.TrackArrays!.LatE7,
+                State.TrackArrays.LonE7,
+                State.TrackArrays.VarioCms,
                 MapStyle.ToString().ToLowerInvariant());
 
             lastRenderSignature = signature;
@@ -194,8 +191,8 @@
 
     private string BuildRenderSignature()
     {
-        var latE7 = Track!.LatE7;
-        var lonE7 = Track!.LonE7;
+        var latE7 = State.TrackArrays!.LatE7;
+        var lonE7 = State.TrackArrays!.LonE7;
 
         var count = Math.Min(latE7.Length, lonE7.Length);
 
@@ -208,7 +205,7 @@
     [JSInvokable]
     public Task OnMapTrackHover(int trackIndex)
     {
-        if (Track is null || State.ClimbSegments is null)
+        if (State.TrackArrays is null || State.ClimbSegments is null)
             return Task.CompletedTask;
 
         State.SetHoveredClimbFromTrackIndex(trackIndex);
@@ -227,13 +224,13 @@
     {
         var hoveredIndex = State.HoveredClimbIndex;
 
-        if (!hoveredIndex.HasValue || Track is null || State.ClimbSegments is null)
+        if (!hoveredIndex.HasValue || State.TrackArrays is null || State.ClimbSegments is null)
             return Task.CompletedTask;
 
         State.ClearHoverOnSelection();
 
         var result = SelectionService.SelectClimb(
-            Track,
+            State.TrackArrays,
             State.ClimbSegments.ToList(),
             hoveredIndex.Value);
 

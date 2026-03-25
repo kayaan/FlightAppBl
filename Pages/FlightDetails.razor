@@ -50,12 +50,12 @@
         <div class="flight-header">
             @if (State.ShowAllClimbs)
             {
-                <AllClimbsKpis Items="State.AllClimbKpis"                               OnClimbClick="SelectClimb"                               OnClimbHover="SetHoveredClimb"
+                <AllClimbsKpis Items="State.AllClimbKpis" OnClimbClick="SelectClimb" OnClimbHover="SetHoveredClimb"
                                OnClimbLeave="ClearHoveredClimb" />
             }
             else if (SelectedClimb is not null)
             {
-                <SelectedClimbKpis Stats="State.DisplayedStats"                                   SelectedClimb="SelectedClimb"                                   TrackArrays="State.TrackArrays" />
+                <SelectedClimbKpis Stats="State.DisplayedStats" SelectedClimb="SelectedClimb" TrackArrays="State.TrackArrays" />
             }
             else
             {
@@ -68,7 +68,7 @@
             <div class="climb-nav-row">
                 <div class="climb-nav-shell">
 
-                    <button type="button"                            class="climb-btn"                            title="Previous climb"                            @onclick="SelectPreviousClimb"
+                    <button type="button" class="climb-btn" title="Previous climb" @onclick="SelectPreviousClimb"
                             disabled="@(!CanSelectPreviousClimb)">
                         ◀
                     </button>
@@ -78,18 +78,18 @@
                         <div class="climb-sub">@GetClimbNavigatorSubtitle()</div>
                     </div>
 
-                    <button type="button"                            class="climb-btn climb-btn-primary"                            title="Next climb"                            @onclick="SelectNextClimb"
+                    <button type="button" class="climb-btn climb-btn-primary" title="Next climb" @onclick="SelectNextClimb"
                             disabled="@(!CanSelectNextClimb)">
                         ▶
                     </button>
 
-                    <button type="button"                            class="climb-btn-clear"                            title="Clear selection"                            @onclick="ClearSelection"
+                    <button type="button" class="climb-btn-clear" title="Clear selection" @onclick="ClearSelection"
                             disabled="@(!CanClear)">
                         ✕
                     </button>
 
-                    <button type="button"                            class="climb-btn-toggle @(State.ShowAllClimbs ? "climb-btn-toggle-active" : null)"
-                            title="Show all climbs"                            @onclick="ToggleShowAllClimbs">
+                    <button type="button" class="climb-btn-toggle @(State.ShowAllClimbs ? "climb-btn-toggle-active" : null)"
+                            title="Show all climbs" @onclick="ToggleShowAllClimbs">
                         All
                     </button>
 
@@ -102,8 +102,8 @@
                 <FlightCharts />
             </div>
 
-            <div class="splitter @(State.IsResizing ? "splitter-active" : null)"                 @onmousedown="StartResize"
-                 @onmousedown:preventDefault="true"                 aria-label="Resize panels"                 role="separator">
+            <div class="splitter @(State.IsResizing ? "splitter-active" : null)" @onmousedown="StartResize"
+                 @onmousedown:preventDefault="true" aria-label="Resize panels" role="separator">
             </div>
 
             <div class="right-pane">
@@ -119,7 +119,7 @@
                     </button>
                 </div>
 
-                <FlightMap Track="State.TrackArrays"                           Height="100%"                           MapStyle="State.MapStyle" />
+                <FlightMap Height="100%" MapStyle="State.MapStyle" />
             </div>
         </div>
 
