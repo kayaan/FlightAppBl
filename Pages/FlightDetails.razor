@@ -1,5 +1,8 @@
 @* Pages\FlightDetails.razor *@
 
+
+@inherits StatefulComponentBase
+
 @page "/flights/{Id}"
 
 @using FlightApp.Analysis
@@ -10,11 +13,9 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 
-@implements IAsyncDisposable
 
 @inject FlightDetailsLoadService FlightDetailsLoadService
 @inject FlightDetailsSelectionService SelectionService
-@inject FlightDetailsStateService State
 @inject IJSRuntime JS
 
 <div class="flight-details-page">
@@ -134,8 +135,6 @@
     [Parameter]
     public string? Id { get; set; }
 
-    private DotNetObjectReference<FlightDetails>? dotNetRef;
-
     private ClimbSegment? HoveredClimb => State.HoveredClimb;
     private ClimbSegment? SelectedClimb => State.SelectedClimb;
 
@@ -143,15 +142,6 @@
     private bool CanSelectNextClimb => State.CanSelectNextClimb;
     private bool CanClear => State.CanClear;
 
-    protected override void OnInitialized()
-    {
-        State.Changed += OnStateChanged;
-    }
-
-    private void OnStateChanged()
-    {
-        _ = InvokeAsync(StateHasChanged);
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -349,18 +339,5 @@
         State.ToggleShowAllClimbs();
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        State.Changed -= OnStateChanged;
 
-        try
-        {
-            await JS.InvokeVoidAsync("flightCharts.clearSelectionCallback");
-        }
-        catch
-        {
-        }
-
-        dotNetRef?.Dispose();
-    }
 }
