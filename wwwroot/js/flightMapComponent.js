@@ -735,6 +735,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         clear,
         dispose,
         updateHoveredClimb,
-        updateSelectedClimb
+        updateSelectedClimb,
+        registerInteraction
     };
 })();
