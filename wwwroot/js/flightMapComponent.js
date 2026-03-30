@@ -147,7 +147,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             endIndex,
             "#000000",
             haloWeight,
-            0.85
+            0.5
         );
 
         const line = buildSegmentPolyline(
@@ -188,8 +188,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             beginIndex: payload?.beginIndex,
             endIndex: payload?.endIndex,
             color: "#ff3b30",
-            haloWeight: 14,
-            lineWeight: 6,
+            haloWeight: 7,
+            lineWeight: 3,
             opacity: 1.0,
             layerKey: "selectedClimb"
         });
