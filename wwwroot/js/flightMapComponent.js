@@ -128,6 +128,7 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         const {
             beginIndex,
             endIndex,
+            color,
             haloWeight,
             lineWeight,
             opacity,
@@ -146,43 +147,101 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             endIndex,
             "#000000",
             haloWeight,
-            0.5
+            0.85
         );
 
         const line = buildSegmentPolyline(
             instance,
             beginIndex,
             endIndex,
-            "#e9d378",
+            color,
             lineWeight,
             opacity
         );
 
         if (halo) {
             halo.addTo(instance.map);
+            halo.bringToFront();
             instance[layerKey + "Halo"] = halo;
         }
 
         if (line) {
             line.addTo(instance.map);
+            line.bringToFront();
             instance[layerKey + "Line"] = line;
         }
     }
 
     function updateSelectedClimb(mapId, payload) {
+
+        console.log("updateSelectedClimb CALLED", payload);
+
         const instance = instances[mapId];
+        if (!instance) {
+            console.log("NO INSTANCE");
+            return;
+        }
+
         if (!instance) return;
 
         renderClimbHighlight(instance, {
             beginIndex: payload?.beginIndex,
             endIndex: payload?.endIndex,
-            color: "#ef4444",
-            haloWeight: 12,
-            lineWeight: 4,
+            color: "#ff3b30",
+            haloWeight: 14,
+            lineWeight: 6,
             opacity: 1.0,
             layerKey: "selectedClimb"
         });
+
+        if (instance.selectedClimbHalo) instance.selectedClimbHalo.bringToFront();
+        if (instance.selectedClimbLine) instance.selectedClimbLine.bringToFront();
+
+        const cursorIndex = payload?.cursorIndex;
+
+        if (cursorIndex == null || cursorIndex < 0) {
+            if (instance.cursorMarker) {
+                instance.cursorMarker.setStyle({
+                    opacity: 0,
+                    fillOpacity: 0
+                });
+            }
+            return;
+        }
+
+        moveCursorMarkerToIndex(instance, cursorIndex);
     }
+
+    function moveCursorMarkerToIndex(instance, trackIndex) {
+        if (!instance || !instance.cursorMarker || !instance.latE7 || !instance.lonE7)
+            return;
+
+        if (trackIndex == null || trackIndex < 0)
+            return;
+
+        if (trackIndex >= instance.latE7.length || trackIndex >= instance.lonE7.length)
+            return;
+
+        const lat = instance.latE7[trackIndex] / 1e7;
+        const lon = instance.lonE7[trackIndex] / 1e7;
+
+        instance.cursorMarker.setStyle({
+            opacity: 1,
+            fillOpacity: 1
+        });
+
+        instance.cursorMarker.setLatLng([lat, lon]);
+
+        if (instance.cursorHalo) {
+            instance.cursorHalo.setStyle({
+                opacity: 0.5,
+                fillOpacity: 0.2
+            });
+
+            instance.cursorHalo.setLatLng([lat, lon]);
+        }
+    }
+
 
     function updateHoveredClimb(mapId, payload) {
         const instance = instances[mapId];
@@ -191,6 +250,16 @@ window.flightMapComponent = window.flightMapComponent || (function () {
         const beginIndex = payload?.beginIndex;
         const endIndex = payload?.endIndex;
         const climbIndex = payload?.climbIndex;
+        const isSameAsSelected = payload?.isSameAsSelected === true;
+
+        if (isSameAsSelected || beginIndex == null || endIndex == null) {
+            instance.hoveredClimbHalo = removeLayer(instance.map, instance.hoveredClimbHalo);
+            instance.hoveredClimbLine = removeLayer(instance.map, instance.hoveredClimbLine);
+
+            if (instance.selectedClimbHalo) instance.selectedClimbHalo.bringToFront();
+            if (instance.selectedClimbLine) instance.selectedClimbLine.bringToFront();
+            return;
+        }
 
         const color = climbIndex != null
             ? climbColors[climbIndex % climbColors.length]
@@ -200,11 +269,15 @@ window.flightMapComponent = window.flightMapComponent || (function () {
             beginIndex,
             endIndex,
             color,
-            haloWeight: 10,
+            haloWeight: 9,
             lineWeight: 3,
-            opacity: 0.9,
+            opacity: 0.95,
             layerKey: "hoveredClimb"
         });
+
+        // Selected bleibt dominant
+        if (instance.selectedClimbHalo) instance.selectedClimbHalo.bringToFront();
+        if (instance.selectedClimbLine) instance.selectedClimbLine.bringToFront();
     }
 
     function buildSegmentPolyline(instance, beginIndex, endIndex, color, weight, opacity) {

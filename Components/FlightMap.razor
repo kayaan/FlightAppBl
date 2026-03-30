@@ -49,6 +49,17 @@
         State.TrackArrays?.LatE7 is { Length: > 0 } &&
         State.TrackArrays.LonE7 is { Length: > 0 };
 
+
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (disposed)
@@ -119,6 +130,7 @@
                 dotNetRef);
         }
     }
+
     private HoveredClimbMapPayload BuildHoveredClimbPayload()
     {
         if (State.HoveredClimb is null || State.ClimbSegments is null)
@@ -138,20 +150,37 @@
             }
         }
 
+        var isSameAsSelected =
+            State.SelectedClimb is not null &&
+            State.SelectedClimb.BeginIndex == State.HoveredClimb.BeginIndex &&
+            State.SelectedClimb.EndIndex == State.HoveredClimb.EndIndex;
+
         return new HoveredClimbMapPayload
         {
             BeginIndex = State.HoveredClimb.BeginIndex,
             EndIndex = State.HoveredClimb.EndIndex,
-            ClimbIndex = climbIndex >= 0 ? climbIndex : null
+            ClimbIndex = climbIndex >= 0 ? climbIndex : null,
+            IsSameAsSelected = isSameAsSelected
         };
     }
 
     private SelectedClimbMapPayload BuildSelectedClimbPayload()
     {
+        var begin = State.SelectedClimb?.BeginIndex;
+        var end = State.SelectedClimb?.EndIndex;
+
+        int? cursorIndex = null;
+
+        if (begin.HasValue && end.HasValue)
+        {
+            cursorIndex = (begin.Value + end.Value) / 2;
+        }
+
         return new SelectedClimbMapPayload
         {
-            BeginIndex = State.SelectedClimb?.BeginIndex,
-            EndIndex = State.SelectedClimb?.EndIndex
+            BeginIndex = begin,
+            EndIndex = end,
+            CursorIndex = cursorIndex
         };
     }
 
@@ -160,7 +189,13 @@
         var begin = State.HoveredClimb?.BeginIndex ?? -1;
         var end = State.HoveredClimb?.EndIndex ?? -1;
 
-        return $"{begin}:{end}";
+        var sameAsSelected =
+            State.HoveredClimb is not null &&
+            State.SelectedClimb is not null &&
+            State.HoveredClimb.BeginIndex == State.SelectedClimb.BeginIndex &&
+            State.HoveredClimb.EndIndex == State.SelectedClimb.EndIndex;
+
+        return $"{begin}:{end}:{sameAsSelected}";
     }
 
     private string BuildSelectedClimbSignature()
@@ -178,15 +213,15 @@
 
         disposed = true;
 
-        dotNetRef?.Dispose();
+        State.Changed -= OnStateChanged;
 
-        try
+        if (dotNetRef is not null)
         {
-            await JS.InvokeVoidAsync("flightMapComponent.dispose", mapId);
+            dotNetRef.Dispose();
+            dotNetRef = null;
         }
-        catch
-        {
-        }
+
+        await JS.InvokeVoidAsync("flightMapComponent.clear", mapId);
     }
 
     private string BuildRenderSignature()
