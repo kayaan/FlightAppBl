@@ -28,6 +28,9 @@ jobs:
       - name: Publish Blazor App
         run: dotnet publish -c Release -o published
 
+      - name: Check publish output
+        run: ls -la published/wwwroot
+
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -35,9 +38,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_HAPPY_DUNE_004EAA603 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "/"
+          app_location: "published/wwwroot"  # ← Geändert!
           api_location: ""
-          output_location: "published/wwwroot"
+          output_location: ""                # ← Leer!
           skip_app_build: true
 
   close_pull_request_job:
