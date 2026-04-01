@@ -347,6 +347,16 @@ public sealed class FlightDetailsStateService
 
     public void SetHoveredClimbFromTrackIndex(int trackIndex)
     {
+        if (!ShowAllClimbs)   // 🔥 FIX
+        {
+            if (_hoveredClimbIndex != null)
+            {
+                _hoveredClimbIndex = null;
+                NotifyChanged();
+            }
+            return;
+        }
+
         var climbIndex = FindClimbIndexAtTrackIndex(trackIndex);
 
         if (!climbIndex.HasValue || SelectedClimbIndex == climbIndex.Value)

@@ -174,11 +174,8 @@ window.flightMapComponent = window.flightMapComponent || (function () {
 
     function updateSelectedClimb(mapId, payload) {
 
-        console.log("updateSelectedClimb CALLED", payload);
-
         const instance = instances[mapId];
         if (!instance) {
-            console.log("NO INSTANCE");
             return;
         }
 
