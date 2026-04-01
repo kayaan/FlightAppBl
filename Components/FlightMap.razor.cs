@@ -6,6 +6,9 @@ using Microsoft.JSInterop;
 
 namespace FlightApp.Components;
 
+/// <summary>
+/// Code behind flight map
+/// </summary>
 public partial class FlightMap
 {
     [Inject] private FlightDetailsSelectionService SelectionService { get; set; } = default!;
