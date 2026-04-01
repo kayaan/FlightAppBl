@@ -6,5 +6,7 @@ public sealed class HoveredClimbMapPayload
 
     public int? EndIndex { get; set; }
 
-    public int? ClimbIndex {get; set;}
+    public int? ClimbIndex { get; set; }
+
+    public bool IsSameAsSelected { get; set; }
 }
